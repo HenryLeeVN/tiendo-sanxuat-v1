@@ -191,7 +191,7 @@ export default function App() {
                 >
                   {/* Dòng 1: Ảnh nhỏ + Tên + Badge trạng thái */}
                   <div className="flex items-center gap-2.5 justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                       {prod.hinhAnh ? (
                         <img 
                           src={prod.hinhAnh} 
@@ -207,8 +207,9 @@ export default function App() {
                         </div>
                       )}
                       
-                      <div className="min-w-0">
-                        <h3 className="font-extrabold text-xs text-slate-800 truncate" title={prod.tenSP}>
+                      <div className="min-w-0 flex-1">
+                        {/* Thay thế truncate bằng break-words để không bao giờ bị che chữ khi tên quá dài */}
+                        <h3 className="font-extrabold text-xs text-slate-800 break-words leading-tight pr-1">
                           {prod.tenSP}
                         </h3>
                         {/* Dòng SL đồng bộ ngay dưới tên */}
@@ -275,7 +276,7 @@ export default function App() {
               Quay lại
             </button>
             <div className="min-w-0 flex-1">
-              <h2 className="text-xs font-extrabold truncate" title={selectedProduct?.tenSP}>
+              <h2 className="text-xs font-extrabold break-words pr-1 leading-tight" title={selectedProduct?.tenSP}>
                 {selectedProduct?.tenSP}
               </h2>
             </div>
@@ -285,6 +286,18 @@ export default function App() {
           {selectedProduct && (
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               
+              {/* === HÌNH ẢNH PHÓNG LỚN TRỰC QUAN Ở GIỮA TRANG CHI TIẾT === */}
+              {selectedProduct.hinhAnh ? (
+                <div className="flex justify-center my-1.5">
+                  <img 
+                    src={selectedProduct.hinhAnh} 
+                    alt={selectedProduct.tenSP}
+                    className="w-32 h-32 object-cover rounded-xl border border-slate-200 shadow-sm bg-white p-1"
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                </div>
+              ) : null}
+
               {/* Bộ lọc định mức tích hợp tên rút gọn, ví dụ: Mê (3) */}
               <div>
                 <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Bộ lọc chi tiết</h3>
@@ -330,6 +343,32 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody>
+                      {/* === DÒNG TỔNG CỘNG Ở TRÊN CÙNG TABLE (Theo yêu cầu) === */}
+                      {(() => {
+                        const historyRows = selectedProduct.history ? selectedProduct.history.filter(h => {
+                          if (detailFrameFilter === 'all') return true;
+                          return h.tenRutGon === detailFrameFilter;
+                        }) : [];
+
+                        if (historyRows.length === 0) return null;
+
+                        const totalKeHoach = historyRows.reduce((sum, h) => sum + h.keHoach, 0);
+                        const totalThucTe = historyRows.reduce((sum, h) => sum + h.thucTe, 0);
+                        const totalChenhLech = totalThucTe - totalKeHoach;
+
+                        return (
+                          <tr className="bg-slate-100/90 font-black border-b border-slate-200/80">
+                            <td className="py-2.5 px-3 text-center text-[10px] text-slate-600 font-extrabold">TỔNG</td>
+                            <td className="py-2.5 px-2 text-slate-800 text-[11px]">Tất cả</td>
+                            <td className="py-2.5 px-2 text-right text-slate-700">{totalKeHoach}</td>
+                            <td className="py-2.5 px-2 text-right text-slate-900">{totalThucTe}</td>
+                            <td className={`py-2.5 px-3 text-center ${totalChenhLech < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                              {totalChenhLech > 0 ? `+${totalChenhLech}` : totalChenhLech}
+                            </td>
+                          </tr>
+                        );
+                      })()}
+
                       {selectedProduct.history && selectedProduct.history.filter(h => {
                         if (detailFrameFilter === 'all') return true;
                         return h.tenRutGon === detailFrameFilter;
