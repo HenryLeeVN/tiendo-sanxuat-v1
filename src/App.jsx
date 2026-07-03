@@ -10,7 +10,8 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   
   // Trạng thái cho "Màn hình chi tiết trượt từ bên phải"
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedProductCode, setSelectedProductCode] = useState(null); // Lưu Mã SP
+  const [detailTimeFilter, setDetailTimeFilter] = useState('today'); // Bộ lọc thời gian ĐỘC LẬP trong trang chi tiết
   const [detailFrameFilter, setDetailFrameFilter] = useState('all');
 
   const fetchAllData = async () => {
@@ -48,6 +49,11 @@ export default function App() {
       product.tenSP.toLowerCase().includes(q)
     );
   }) || [];
+
+  // Lấy ra thông tin sản phẩm đang được chọn trong trang chi tiết dựa theo bộ lọc thời gian độc lập của nó
+  const activeDetailProduct = selectedProductCode && allReports?.reports 
+    ? allReports.reports[detailTimeFilter]?.products.find(p => p.maSP === selectedProductCode)
+    : null;
 
   const getStatusBadge = (status) => {
     switch(status) {
@@ -117,7 +123,7 @@ export default function App() {
             )}
           </div>
 
-          {/* Bộ lọc thời gian */}
+          {/* Bộ lọc thời gian ngoài màn hình chính */}
           <div className="grid grid-cols-4 gap-1 bg-slate-200/70 p-0.5 rounded-lg">
             {[
               { id: 'today', label: 'Hôm nay' },
@@ -175,7 +181,7 @@ export default function App() {
           </div>
         )}
 
-        {/* Danh sách các sản phẩm (Card siêu ngắn dẹt, bấm vào là chuyển trang sang phải) */}
+        {/* Danh sách các sản phẩm (Card ngắn dẹt) */}
         {!loading && !error && currentReport && (
           <div className="space-y-2">
             {filteredProducts.map(prod => {
@@ -184,8 +190,9 @@ export default function App() {
                 <div 
                   key={prod.maSP} 
                   onClick={() => {
-                    setSelectedProduct(prod);
-                    setDetailFrameFilter('all'); // Reset bộ lọc khung khi mở sản phẩm mới
+                    setSelectedProductCode(prod.maSP); // Lưu mã sản phẩm để hiển thị chi tiết
+                    setDetailTimeFilter(filter); // Đồng bộ thời gian ban đầu giống bộ lọc bên ngoài
+                    setDetailFrameFilter('all');
                   }}
                   className={`bg-white border border-slate-150 rounded-lg shadow-3xs overflow-hidden transition-all duration-150 active:bg-slate-100 flex flex-col justify-between p-2.5 cursor-pointer ${badge.border}`}
                 >
@@ -200,7 +207,7 @@ export default function App() {
                           onError={(e) => { e.target.style.display = 'none'; }}
                         />
                       ) : (
-                        <div className="w-9 h-9 bg-slate-100 rounded flex items-center justify-center text-slate-450 border border-slate-150 shrink-0">
+                        <div className="w-9 h-9 bg-slate-100 rounded flex items-center justify-center text-slate-455 border border-slate-150 shrink-0">
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
@@ -208,12 +215,11 @@ export default function App() {
                       )}
                       
                       <div className="min-w-0 flex-1">
-                        {/* Thay thế truncate bằng break-words để không bao giờ bị che chữ khi tên quá dài */}
                         <h3 className="font-extrabold text-xs text-slate-800 break-words leading-tight pr-1">
                           {prod.tenSP}
                         </h3>
                         {/* Dòng SL đồng bộ ngay dưới tên */}
-                        <div className="text-[10px] font-bold text-slate-450 flex items-center gap-1.5 mt-0.5">
+                        <div className="text-[10px] font-bold text-slate-455 flex items-center gap-1.5 mt-0.5">
                           <span>Đồng bộ:</span>
                           <span className="text-slate-800 font-extrabold">{prod.dongBo}/{prod.keHoach}</span>
                           <span className={`font-black ${prod.chenhLech < 0 ? 'text-red-600' : 'text-green-600'}`}>
@@ -229,7 +235,7 @@ export default function App() {
                     </span>
                   </div>
 
-                  {/* Dòng 2: Hiển thị các khung dẹt theo hàng ngang cực kỳ gọn gàng */}
+                  {/* Dòng 2: Hiển thị các khung dẹt theo hàng ngang */}
                   <div className="flex flex-wrap gap-1 mt-2 border-t border-slate-100/60 pt-1.5">
                     {prod.khung.map(k => {
                       const isUnder = k.thucTe < k.keHoach;
@@ -238,7 +244,7 @@ export default function App() {
                           key={k.maKhung} 
                           className="bg-slate-100/60 border border-slate-200/50 rounded px-1.5 py-0.5 text-[9px] font-bold flex items-center gap-1"
                         >
-                          <span className="text-slate-450 uppercase">{k.tenRutGon}:</span>
+                          <span className="text-slate-455 uppercase">{k.tenRutGon}:</span>
                           <span className={isUnder ? 'text-red-500 font-black' : 'text-green-600 font-black'}>
                             {k.thucTe}/{k.keHoach}
                           </span>
@@ -253,21 +259,21 @@ export default function App() {
         )}
       </div>
 
-      {/* 4. MÀN HÌNH CHI TIẾT TRƯỢT SANG PHẢI (drawer slide-over cực mượt) */}
+      {/* 4. MÀN HÌNH CHI TIẾT TRƯỢT SANG PHẢI (Có tích hợp Bộ lọc thời gian Độc lập ngay bên trong) */}
       <div 
         className={`fixed inset-0 z-50 flex justify-end bg-slate-900/45 backdrop-blur-xs transition-opacity duration-300 ${
-          selectedProduct ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          activeDetailProduct ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       >
         <div 
           className={`w-full max-w-md bg-slate-50 h-full flex flex-col shadow-2xl transform transition-transform duration-300 ease-out ${
-            selectedProduct ? 'translate-x-0' : 'translate-x-full'
+            activeDetailProduct ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
           {/* Header màn hình chi tiết */}
           <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white p-3 flex items-center gap-2">
             <button 
-              onClick={() => setSelectedProduct(null)}
+              onClick={() => setSelectedProductCode(null)} // Bấm quay lại đóng trang chi tiết
               className="flex items-center text-xs font-bold bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg transition-colors shrink-0"
             >
               <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -276,31 +282,56 @@ export default function App() {
               Quay lại
             </button>
             <div className="min-w-0 flex-1">
-              <h2 className="text-xs font-extrabold break-words pr-1 leading-tight" title={selectedProduct?.tenSP}>
-                {selectedProduct?.tenSP}
+              <h2 className="text-xs font-extrabold break-words pr-1 leading-tight" title={activeDetailProduct?.tenSP}>
+                {activeDetailProduct?.tenSP}
               </h2>
             </div>
           </div>
 
           {/* Nội dung chi tiết */}
-          {selectedProduct && (
+          {activeDetailProduct && (
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               
-              {/* === HÌNH ẢNH PHÓNG LỚN TRỰC QUAN Ở GIỮA TRANG CHI TIẾT === */}
-              {selectedProduct.hinhAnh ? (
+              {/* Hình ảnh phóng lớn trực quan ở giữa */}
+              {activeDetailProduct.hinhAnh ? (
                 <div className="flex justify-center my-1.5">
                   <img 
-                    src={selectedProduct.hinhAnh} 
-                    alt={selectedProduct.tenSP}
+                    src={activeDetailProduct.hinhAnh} 
+                    alt={activeDetailProduct.tenSP}
                     className="w-32 h-32 object-cover rounded-xl border border-slate-200 shadow-sm bg-white p-1"
                     onError={(e) => { e.target.style.display = 'none'; }}
                   />
                 </div>
               ) : null}
 
-              {/* Bộ lọc định mức tích hợp tên rút gọn, ví dụ: Mê (3) */}
+              {/* === BỘ LỌC THỜI GIAN ĐỘC LẬP NGAY TRONG TRANG CHI TIẾT (Giải quyết triệt để bất tiện của bạn) === */}
               <div>
-                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Bộ lọc chi tiết</h3>
+                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Chọn thời gian báo cáo</h3>
+                <div className="grid grid-cols-4 gap-1 bg-slate-200/70 p-0.5 rounded-lg">
+                  {[
+                    { id: 'today', label: 'Hôm nay' },
+                    { id: 'week', label: 'Tuần này' },
+                    { id: 'month', label: 'Tháng' },
+                    { id: 'all', label: 'Tất cả' }
+                  ].map(item => (
+                    <button
+                      key={item.id}
+                      onClick={() => setDetailTimeFilter(item.id)} // Bấm cái này dữ liệu chi tiết sẽ đổi ngay lập tức
+                      className={`py-1.5 text-[10px] font-extrabold rounded transition-all duration-150 ${
+                        detailTimeFilter === item.id 
+                          ? 'bg-white text-red-600 shadow-2xs' 
+                          : 'text-slate-600 hover:text-slate-950'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bộ lọc định mức (BOM) loại khung, ví dụ: Mê (3), Chân (2)... */}
+              <div>
+                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Bộ lọc linh kiện</h3>
                 <div className="flex flex-wrap gap-1.5 pb-3 border-b border-slate-200">
                   <button
                     onClick={() => setDetailFrameFilter('all')}
@@ -312,7 +343,7 @@ export default function App() {
                   >
                     Tất cả
                   </button>
-                  {selectedProduct.khung.map(k => (
+                  {activeDetailProduct.khung.map(k => (
                     <button
                       key={k.maKhung}
                       onClick={() => setDetailFrameFilter(k.tenRutGon)}
@@ -343,9 +374,9 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {/* === DÒNG TỔNG CỘNG Ở TRÊN CÙNG TABLE (Theo yêu cầu) === */}
+                      {/* DÒNG TỔNG CỘNG Ở TRÊN CÙNG TABLE */}
                       {(() => {
-                        const historyRows = selectedProduct.history ? selectedProduct.history.filter(h => {
+                        const historyRows = activeDetailProduct.history ? activeDetailProduct.history.filter(h => {
                           if (detailFrameFilter === 'all') return true;
                           return h.tenRutGon === detailFrameFilter;
                         }) : [];
@@ -369,7 +400,7 @@ export default function App() {
                         );
                       })()}
 
-                      {selectedProduct.history && selectedProduct.history.filter(h => {
+                      {activeDetailProduct.history && activeDetailProduct.history.filter(h => {
                         if (detailFrameFilter === 'all') return true;
                         return h.tenRutGon === detailFrameFilter;
                       }).length === 0 ? (
@@ -379,7 +410,7 @@ export default function App() {
                           </td>
                         </tr>
                       ) : (
-                        selectedProduct.history && selectedProduct.history
+                        activeDetailProduct.history && activeDetailProduct.history
                           .filter(h => {
                             if (detailFrameFilter === 'all') return true;
                             return h.tenRutGon === detailFrameFilter;
@@ -389,7 +420,6 @@ export default function App() {
                               <td className="py-2.5 px-3 text-center text-slate-450 font-bold font-mono text-[10px]">
                                 {h.ngay}
                               </td>
-                              {/* Chỉ hiển thị tên rút gọn, không hiển thị mã hay tên đầy đủ */}
                               <td className="py-2.5 px-2 font-extrabold text-slate-700">
                                 {h.tenRutGon}
                               </td>
