@@ -1,23 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const API_BASE = "https://script.google.com/macros/s/AKfycbzTy7rkjZbkozDUQoA7hjW8YstP6V3uqHqQXukbMOD6qlQv7IvYXO-vHbPbMG_2LYul/exec"; // <-- ĐÃ TỰ ĐỘNG CẬP NHẬT LINK WEB APP MỚI CỦA BẠN VÀO ĐÂY
+const API_BASE = "https://script.google.com/macros/s/AKfycbzTy7rkjZbkozDUQoA7hjW8YstP6V3uqHqQXukbMOD6qlQv7IvYXO-vHbPbMG_2LYul/exec"; // <-- ĐÃ ĐỒNG BỘ LINK WEB APP MỚI CỦA BẠN
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dailyPlan'); // 'dailyPlan' (Theo ngày), 'ctsxProgress' (Theo CTSX)
   const [filter, setFilter] = useState('today'); // 'today', 'week', 'month', 'all'
-  const [selectedCTSX, setSelectedCTSX] = useState('totalOrder'); // 'totalOrder', 'unallocated', 'CTSX01', 'CTSX02'...
+  const [selectedCTSX, setSelectedCTSX] = useState('totalOrder'); // 'totalOrder', 'unallocated', 'all', 'CTSX01'...
   
   const [allReports, setAllReports] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   
-  // Trạng thái cho Màn hình chi tiết trượt từ bên phải
-  const [selectedProductCode, setSelectedProductCode] = useState(null); // Lưu Mã định danh SP
+  // Trạng thái lưu trữ độc lập để sửa dứt điểm lỗi nhảy trang khi bấm nút lọc
+  const [selectedProductName, setSelectedProductName] = useState(null); // Lưu tên sản phẩm sạch
   const [detailTimeFilter, setDetailTimeFilter] = useState('today'); 
   const [detailFrameFilter, setDetailFrameFilter] = useState('all');
 
-  // Bộ nhớ tạm lưu tọa độ cảm ứng để chống chạm nhầm tuyệt đối
+  // Bộ nhớ tạm lưu tọa độ cảm ứng để chống chạm nhầm mép trái tuyệt đối (Edge Swipe 1.5cm)
   const touchStartRef = useRef({ x: 0, y: 0 });
   const touchEndRef = useRef({ x: 0, y: 0 });
   const touchMovedRef = useRef(false);
@@ -31,7 +31,7 @@ export default function App() {
       x: e.targetTouches[0].clientX,
       y: e.targetTouches[0].clientY
     };
-    touchMovedRef.current = false; // Reset trạng thái chưa di chuyển
+    touchMovedRef.current = false;
   };
 
   const handleTouchMove = (e) => {
@@ -39,22 +39,23 @@ export default function App() {
       x: e.targetTouches[0].clientX,
       y: e.targetTouches[0].clientY
     };
-    touchMovedRef.current = true; // Đã có di chuyển ngón tay
+    touchMovedRef.current = true;
   };
 
   const handleTouchEnd = () => {
-    // 1. Nếu chỉ là chạm (Tap) để bấm nút -> Bỏ qua không thoát
-    if (!touchMovedRef.current) return; 
+    if (!touchMovedRef.current) return; // Chạm nhẹ (Tap) -> Bỏ qua không thoát
 
     const diffX = touchEndRef.current.x - touchStartRef.current.x;
     const diffY = Math.abs(touchEndRef.current.y - touchStartRef.current.y);
 
-    // 2. Nếu cuộn dọc là chủ yếu (để xem bảng dữ liệu) -> Bỏ qua không thoát
+    // Nếu cuộn dọc xem dữ liệu -> Bỏ qua không thoát
     if (diffY > 45) return;
 
-    // 3. Chỉ thoát khi vuốt ngang từ trái qua phải rõ ràng (Độ dài > 80px)
-    if (diffX > 80 && selectedProductCode) {
-      setSelectedProductCode(null);
+    // CHỈ vuốt từ sát mép trái qua phải khoảng 1.5cm (dưới 50px đầu tiên) mới kích hoạt lùi trang
+    const isStartNearLeftEdge = touchStartRef.current.x < 50;
+
+    if (isStartNearLeftEdge && diffX > 80 && selectedProductName) {
+      setSelectedProductName(null);
     }
   };
 
@@ -84,10 +85,7 @@ export default function App() {
     fetchAllData();
   }, []);
 
-  // Nếu là Tab Theo CTSX thì luôn luôn lấy mốc thời gian 'all' để xem tiến độ tích lũy trọn vẹn, không bị giới hạn ngày
   const activeFilter = activeTab === 'ctsxProgress' ? 'all' : filter;
-  
-  // Áp dụng cấu trúc dữ liệu tương ứng dựa theo nút bấm đang chọn trong Tab 2
   const isTotalOrderView = activeTab === 'ctsxProgress' && (selectedCTSX === 'totalOrder' || selectedCTSX === 'unallocated');
   const activeReportKey = isTotalOrderView ? 'totalOrder' : activeTab;
 
@@ -95,7 +93,7 @@ export default function App() {
     ? allReports.reports[activeFilter][activeReportKey] 
     : null;
 
-  // Lọc danh sách sản phẩm theo Tìm kiếm + Bộ lọc số CTSX/Order
+  // Lọc danh sách sản phẩm trang tổng
   const filteredProducts = currentTabReport?.products?.filter(product => {
     const matchSearch = product.tenSP.toLowerCase().includes(searchQuery.toLowerCase());
     
@@ -107,12 +105,17 @@ export default function App() {
     return matchSearch && matchCTSX;
   }) || [];
 
-  // Lấy ra thông tin sản phẩm đang được chọn xem chi tiết trượt phải
-  const activeDetailProduct = selectedProductCode && allReports?.reports
-    ? allReports.reports[detailTimeFilter]?.[activeReportKey]?.products.find(p => (p.tenSP === selectedProductCode || p.soCTSX + p.tenSP === selectedProductCode))
+  // Lấy dữ liệu sản phẩm trong trang chi tiết độc lập và chống nhảy trang dứt khoát
+  const activeDetailProduct = selectedProductName && allReports?.reports
+    ? allReports.reports[detailTimeFilter]?.[activeReportKey]?.products.find(p => {
+        if (activeReportKey === 'ctsxProgress') {
+          return p.tenSP === selectedProductName && p.soCTSX === selectedCTSX;
+        }
+        return p.tenSP === selectedProductName;
+      })
     : null;
 
-  // Lọc bảng lịch sử trong trang chi tiết trượt phải theo ô tìm kiếm chung
+  // Lọc bảng lịch sử trong trang chi tiết trượt phải
   const filteredHistoryRows = activeDetailProduct?.history ? activeDetailProduct.history.filter(h => {
     const matchSearchHistory = h.tenRutGon.toLowerCase().includes(searchQuery.toLowerCase());
     const matchFrameHistory = detailFrameFilter === 'all' || h.tenRutGon === detailFrameFilter;
@@ -134,7 +137,6 @@ export default function App() {
     }
   };
 
-  // Hàm định dạng số có ngăn cách hàng nghìn bằng dấu chấm chuẩn Việt Nam
   const formatNum = (num) => {
     return Number(num || 0).toLocaleString('vi-VN');
   };
@@ -142,11 +144,10 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-10">
       
-      {/* HEADER TĨNH MÀU XÁM THAN CHÌ SANG TRỌNG (Sẽ tự động cuộn lên và ẩn đi khi vuốt màn hình xuống dưới) */}
+      {/* HEADER TĨNH MÀU XÁM THAN CHÌ */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 text-white px-4 py-3.5 shadow-sm">
         <div className="max-w-md mx-auto flex items-center justify-between">
           
-          {/* Logo Lê Trần màu đỏ bên trái cực kỳ nổi bật trên nền xám tối */}
           <div className="flex items-center gap-2.5">
             <img 
               src="https://letranfurniture.com/wp-content/uploads/2025/01/Logo-removebg-preview.png" 
@@ -154,13 +155,12 @@ export default function App() {
               className="h-9 w-auto object-contain shrink-0"
               onError={(e) => { e.target.style.display = 'none'; }}
             />
-            <div className="min-w-0">
+            <div className="min-w-0 text-left">
               <h1 className="text-xs font-black uppercase tracking-wider text-white">Lê Trần Furniture</h1>
               <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Xưởng Cơ khí - Tiến độ</p>
             </div>
           </div>
 
-          {/* NÚT TẢI LẠI TRỰC QUAN GỒM CHỮ VÀ ICON XOAY */}
           <button 
             onClick={fetchAllData}
             disabled={loading}
@@ -180,11 +180,10 @@ export default function App() {
         </div>
       </div>
 
-      {/* CỤM STICKY LUÔN CỐ ĐỊNH Ở ĐẦU TRANG KHI VUỐT LÊN (CHỈ CÒN SEARCH BAR VÀ CÁC CHIP LỌC) */}
+      {/* CỤM STICKY GHIM ĐẦU TRANG KHI VUỐT LÊN (Chỉ còn ô tìm kiếm và dải nút lọc con) */}
       <div className="sticky top-0 z-40 bg-slate-50/95 backdrop-blur-md pt-3.5 pb-2.5 px-4 border-b border-slate-200/60 shadow-xs space-y-2.5">
         <div className="max-w-md mx-auto space-y-2.5">
           
-          {/* 1. Thanh ô tìm kiếm luôn cố định cao nhất */}
           <div className="relative">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -207,7 +206,7 @@ export default function App() {
             )}
           </div>
 
-          {/* 2 Tab lớn sửa tên thành: Theo ngày, Theo CTSX */}
+          {/* 2 Tab lớn */}
           <div className="flex border-b border-slate-250">
             {[
               { id: 'dailyPlan', label: 'Theo ngày' },
@@ -219,7 +218,7 @@ export default function App() {
                   setActiveTab(tab.id);
                   setSelectedCTSX(tab.id === 'ctsxProgress' ? 'totalOrder' : 'all'); 
                 }}
-                className={`flex-1 py-2 text-xs font-black text-center border-b-2 transition-all duration-150 ${
+                className={`flex-1 py-2.5 text-xs font-black text-center border-b-2 transition-all duration-150 ${
                   activeTab === tab.id 
                     ? 'border-red-600 text-red-600 font-extrabold' 
                     : 'border-transparent text-slate-500 font-medium'
@@ -230,10 +229,9 @@ export default function App() {
             ))}
           </div>
 
-          {/* 3. Dải Chip lọc con dẹt nằm dưới Tab (Thời gian hoặc các đợt CTSX dẹt lướt) */}
+          {/* Dải Chip lọc con dẹt nằm dưới Tab */}
           <div>
             {activeTab === 'dailyPlan' ? (
-              /* Tab Theo ngày: Lọc Hôm nay, Tuần này... */
               <div className="grid grid-cols-4 gap-1 bg-slate-200/70 p-0.5 rounded-lg">
                 {[
                   { id: 'today', label: 'Hôm nay' },
@@ -255,7 +253,6 @@ export default function App() {
                 ))}
               </div>
             ) : (
-              /* Tab Theo CTSX: BỎ HOÀN TOÀN CHIP TẤT CẢ. Chỉ gồm: Tổng order, Chưa phân bổ, CTSX01, CTSX02... */
               <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 no-scrollbar">
                 <button
                   onClick={() => setSelectedCTSX('totalOrder')}
@@ -297,10 +294,10 @@ export default function App() {
         </div>
       </div>
 
-      {/* THÂN DANH SÁCH SẢN PHẨM CHÍNH */}
+      {/* THÂN SẢN PHẨM CHÍNH */}
       <div className="max-w-md mx-auto px-4 mt-3">
 
-        {/* 4 Chip tổng quan động theo từng Tab */}
+        {/* 4 Chip tổng quan */}
         {!loading && !error && currentTabReport && (
           <div className="grid grid-cols-4 gap-1.5 mb-3">
             <div className="bg-white rounded-lg border border-slate-150 p-1.5 text-center shadow-3xs">
@@ -336,21 +333,18 @@ export default function App() {
             {filteredProducts.map(prod => {
               const badge = getStatusBadge(prod.trangThai);
               const uniqueKey = activeTab === 'ctsxProgress' ? prod.soCTSX + prod.tenSP : prod.tenSP;
-              
-              // Kiểm tra Đang SX: Chỉ cần xưởng có phát sinh thực tế làm linh kiện (> 0) là Đang SX
               const isProducingCurrently = prod.khung.some(k => k.thucTe > 0);
 
               return (
                 <div 
                   key={uniqueKey} 
                   onClick={() => {
-                    setSelectedProductCode(uniqueKey);
+                    setSelectedProductName(prod.tenSP); // Chỉ lưu tên sản phẩm dứt khoát chống sụp đổ trang
                     setDetailTimeFilter(activeFilter); 
                     setDetailFrameFilter('all');
                   }}
                   className={`bg-white border border-slate-150 rounded-lg shadow-3xs overflow-hidden transition-all duration-150 active:bg-slate-100 flex flex-col justify-between p-2.5 cursor-pointer ${badge.border}`}
                 >
-                  {/* Dòng 1: Ảnh nhỏ + Tên + Badge trạng thái */}
                   <div className="flex items-center gap-2.5 justify-between">
                     <div className="flex items-center gap-2 min-w-0 flex-1 text-left">
                       {prod.hinhAnh ? (
@@ -378,7 +372,6 @@ export default function App() {
                           {prod.tenSP}
                         </h3>
 
-                        {/* SL hiển thị gọn theo từng Tab chọn, có ngăn cách dấu chấm hàng nghìn */}
                         <div className="text-[10px] font-bold text-slate-455 flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                           {activeTab === 'dailyPlan' && (
                             <>
@@ -415,7 +408,6 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Badge tiến độ + Badge Đang SX song song (CĂN GIỮA / CĂN PHẢI) */}
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <span className={`px-1.5 py-0.5 text-[8px] font-bold uppercase rounded border ${badge.bg}`}>
                         {badge.text}
@@ -428,7 +420,6 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Hàng 2: Linh kiện dẹt nằm ngang */}
                   <div className="flex flex-wrap gap-1 mt-2 border-t border-slate-100/60 pt-1.5 text-left">
                     {prod.khung.map(k => {
                       const isUnder = k.thucTe < k.keHoach;
@@ -452,7 +443,7 @@ export default function App() {
         )}
       </div>
 
-      {/* 4. MÀN HÌNH CHI TIẾT TRƯỢT SANG PHẢI (Có cảm ứng vuốt dứt khoát từ trái qua phải để backward cực nhạy) */}
+      {/* MÀN HÌNH CHI TIẾT TRƯỢT SANG PHẢI (Hỗ trợ cảm biến Edge Swipe 1.5cm sát mép chống sụp trang dứt khoát) */}
       <div 
         className={`fixed inset-0 z-50 flex justify-end bg-slate-900/45 backdrop-blur-xs transition-opacity duration-300 ${
           activeDetailProduct ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -466,13 +457,12 @@ export default function App() {
             activeDetailProduct ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
-          {/* CỤM STICKY TRANG CHI TIẾT (Nút Quay lại dẹt tối giản + Searchbar luôn cố định ở đầu trang) */}
+          {/* CỤM STICKY TRANG CHI TIẾT */}
           <div className="sticky top-0 z-50 bg-slate-50 border-b border-slate-200/60 shadow-xs space-y-2 pt-3.5 pb-2.5 px-4">
             
-            {/* Hàng nút Back dẹt đen đậm tối giản đồng bộ thương hiệu */}
             <div className="flex items-center gap-2 max-w-md mx-auto">
               <button 
-                onClick={() => setSelectedProductCode(null)}
+                onClick={() => setSelectedProductName(null)} // Bấm quay lại đóng trang chi tiết sạch sẽ
                 className="flex items-center text-xs font-bold bg-white border border-slate-250 text-slate-500 hover:text-slate-800 px-2.5 py-1.5 rounded-lg transition-colors shrink-0 shadow-3xs"
               >
                 <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -494,12 +484,11 @@ export default function App() {
                       {activeDetailProduct.soCTSX}
                     </span>
                   )}
-                  {activeDetailProduct?.tenSP}
+                  {selectedProductName}
                 </h2>
               </div>
             </div>
 
-            {/* Ô tìm kiếm linh kiện dẹt cố định đồng bộ dưới nút Back */}
             <div className="relative max-w-md mx-auto">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -520,7 +509,7 @@ export default function App() {
           {activeDetailProduct && (
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               
-              {/* === THIẾT KẾ CARD THÔNG TIN NGANG HIỆN ĐẠI (Ảnh trái, thông số phải, không bị trống 2 bên) === */}
+              {/* CARD THÔNG TIN NGANG HIỆN ĐẠI (Tối ưu khoảng trống 2 bên) */}
               <div className="bg-white border border-slate-150 rounded-xl p-3 flex gap-3 shadow-3xs items-start">
                 {activeDetailProduct.hinhAnh ? (
                   <img 
@@ -530,20 +519,18 @@ export default function App() {
                     onError={(e) => { e.target.style.display = 'none'; }}
                   />
                 ) : (
-                  <div className="w-24 h-24 bg-slate-100 rounded-lg flex items-center justify-center text-slate-450 border border-slate-150 shrink-0">
+                  <div className="w-24 h-24 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 border border-slate-150 shrink-0">
                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                   </div>
                 )}
                 
-                {/* Thông tin dẹt ngang bên phải ảnh */}
                 <div className="flex-1 min-w-0 text-left">
                   <h3 className="font-extrabold text-xs text-slate-900 break-words leading-tight">
                     {activeDetailProduct.tenSP}
                   </h3>
                   
-                  {/* Báo Số ngày còn lại tính tự động từ Google Sheet (Mô phỏng hình mẫu 2) */}
                   {activeTab === 'ctsxProgress' && activeDetailProduct.remainingDays && (
                     <div className="flex items-center gap-1 mt-1.5 text-[9px] font-black text-red-600 bg-red-50 border border-red-100 px-1.5 py-0.5 rounded w-fit">
                       <span>⏰ {activeDetailProduct.remainingDays}</span>
@@ -569,7 +556,6 @@ export default function App() {
                       </>
                     ) : (
                       <>
-                        {/* === TỔNG QUAN TIẾN ĐỘ THỰC HIỆN CỦA RIÊNG CTSX ĐANG CHỌN (Theo yêu cầu) === */}
                         <div className="flex justify-between"><span>Mục tiêu {activeDetailProduct.soCTSX}:</span><span className="text-slate-800 font-extrabold">{formatNum(activeDetailProduct.keHoach)}</span></div>
                         <div className="flex justify-between"><span>Đồng bộ đợt:</span><span className="text-slate-800 font-extrabold">{formatNum(activeDetailProduct.dongBo)}</span></div>
                       </>
@@ -578,34 +564,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Lựa chọn bộ lọc thời gian Độc lập (Chỉ hiện khi đang ở Tab theo ngày) */}
-              {activeTab === 'dailyPlan' && (
-                <div>
-                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Chọn thời gian báo cáo</h3>
-                  <div className="grid grid-cols-4 gap-1 bg-slate-200/70 p-0.5 rounded-lg">
-                    {[
-                      { id: 'today', label: 'Hôm nay' },
-                      { id: 'week', label: 'Tuần này' },
-                      { id: 'month', label: 'Tháng' },
-                      { id: 'all', label: 'Tất cả' }
-                    ].map(item => (
-                      <button
-                        key={item.id}
-                        onClick={() => setDetailTimeFilter(item.id)}
-                        className={`py-1.5 text-[10px] font-bold rounded transition-all duration-150 ${
-                          detailTimeFilter === item.id 
-                            ? 'bg-white text-red-600 shadow-2xs' 
-                            : 'text-slate-600'
-                        }`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* BỘ LỌC ĐỒNG BỘ THEO CTSX: Khi xem theo CTSX, bấm vào chi tiết vẫn giữ bộ lọc CTSX như bên ngoài (Theo yêu cầu) */}
+              {/* BỘ LỌC ĐỒNG BỘ THEO CTSX TRONG TRANG CHI TIẾT (Không nhảy trang khi bấm) */}
               {activeTab === 'ctsxProgress' && (
                 <div>
                   <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Chọn Chỉ thị sản xuất chi tiết</h3>
@@ -647,7 +606,50 @@ export default function App() {
                 </div>
               )}
 
-              {/* Bộ lọc linh kiện khung (Chỉ hiện Tên Rút Gọn, ví dụ: Mê (3), Chân (2)...) */}
+              {/* === BẢNG TỔNG QUAN TIẾN ĐỘ THỰC HIỆN CỦA TỪNG CTSX (Theo yêu cầu của bạn) === */}
+              {activeTab === 'ctsxProgress' && (
+                <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-3xs space-y-2 text-left">
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    {isTotalOrderView ? 'Phân bổ tiến độ các Chỉ thị (CTSX)' : `Chi tiết Chỉ thị ${selectedCTSX}`}
+                  </h3>
+                  <div className="overflow-hidden border border-slate-150 rounded-lg">
+                    <table className="w-full text-[11px] text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 text-slate-500 font-extrabold uppercase border-b border-slate-150">
+                          <th className="py-2 px-3">Chỉ thị</th>
+                          <th className="py-2 px-2 text-right">Mục tiêu</th>
+                          <th className="py-2 px-2 text-right">Đã làm</th>
+                          <th className="py-2 px-3 text-right">Còn lại</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {allReports?.reports?.all?.ctsxProgress?.products
+                          ?.filter(p => p.tenSP === selectedProductName && (isTotalOrderView || p.soCTSX === selectedCTSX))
+                          .map((pC, idx) => {
+                            const remaining = pC.keHoach - pC.dongBo;
+                            return (
+                              <tr key={idx} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
+                                <td className="py-2 px-3 font-extrabold text-red-600 font-mono">{pC.soCTSX}</td>
+                                <td className="py-2 px-2 text-right text-slate-600 font-bold">{formatNum(pC.keHoach)}</td>
+                                <td className="py-2 px-2 text-right text-slate-800 font-black">{formatNum(pC.dongBo)}</td>
+                                <td className={`py-2 px-3 text-right font-black ${remaining > 0 ? 'text-red-500' : 'text-green-600'}`}>
+                                  {remaining > 0 ? formatNum(remaining) : 0}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        {allReports?.reports?.all?.ctsxProgress?.products?.filter(p => p.tenSP === selectedProductName && (isTotalOrderView || p.soCTSX === selectedCTSX)).length === 0 && (
+                          <tr>
+                            <td colSpan="4" className="py-4 text-center text-slate-400 italic font-medium">Chưa có chỉ thị</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Lọc linh kiện khung */}
               <div>
                 <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Bộ lọc linh kiện</h3>
                 <div className="flex flex-wrap gap-1.5 pb-3 border-b border-slate-200">
@@ -677,7 +679,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Bảng chi tiết: Ngày | Tên khung (Tên rút gọn) | Kế hoạch | Thực hiện | +- (CĂN LỀ KHOA HỌC) */}
+              {/* Bảng chi tiết: Ngày | Tên khung | Kế hoạch | Thực hiện | +- */}
               <div>
                 <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Bảng lịch sử chi tiết</h3>
                 <div className="overflow-hidden bg-white border border-slate-200 rounded-lg shadow-2xs">
@@ -686,7 +688,6 @@ export default function App() {
                       <tr className="bg-slate-100 text-slate-500 font-extrabold uppercase border-b border-slate-200">
                         <th className="py-2.5 px-3 text-center w-24">Ngày</th>
                         <th className="py-2.5 px-2 text-left">Tên khung</th>
-                        {/* Ẩn cột kế hoạch và chênh lệch khi xem theo CTSX dẹt (Theo yêu cầu) */}
                         {activeTab === 'dailyPlan' && <th className="py-2.5 px-2 text-right">Kế hoạch</th>}
                         <th className="py-2.5 px-2 text-right">Thực hiện</th>
                         {activeTab === 'dailyPlan' && <th className="py-2.5 px-3 text-center w-14">+-</th>}
@@ -728,7 +729,6 @@ export default function App() {
                             <td className="py-2.5 px-3 text-center text-slate-455 font-bold font-mono text-[10px]">
                               {h.ngay}
                             </td>
-                            {/* Chỉ hiển thị tên rút gọn, loại bỏ hoàn toàn mã khung */}
                             <td className="py-2.5 px-2 font-extrabold text-slate-700 text-left">
                               {h.tenRutGon}
                             </td>
