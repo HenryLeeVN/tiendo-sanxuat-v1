@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
-const API_BASE = "https://script.google.com/macros/s/AKfycbzTy7rkjZbkozDUQoA7hjW8YstP6V3uqHqQXukbMOD6qlQv7IvYXO-vHbPbMG_2LYul/exec"; // <-- THAY LINK WEB APP GOOGLE SHEET MỚI VÀO ĐÂY
+const API_BASE = "https://script.google.com/macros/s/AKfycbzTy7rkjZbkozDUQoA7hjW8YstP6V3uqHqQXukbMOD6qlQv7IvYXO-vHbPbMG_2LYul/exec"; // <-- ĐÃ TỰ ĐỘNG CẬP NHẬT LINK WEB APP MỚI CỦA BẠN VÀO ĐÂY
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dailyPlan'); // 'dailyPlan' (Theo ngày), 'ctsxProgress' (Theo CTSX)
@@ -17,21 +17,43 @@ export default function App() {
   const [detailTimeFilter, setDetailTimeFilter] = useState('today'); 
   const [detailFrameFilter, setDetailFrameFilter] = useState('all');
 
-  // Quản lý cảm ứng để vuốt lùi màn hình (Swipe left-to-right to go back)
-  let touchStartX = 0;
-  let touchEndX = 0;
+  // Bộ nhớ tạm lưu tọa độ cảm ứng để chống chạm nhầm tuyệt đối
+  const touchStartRef = useRef({ x: 0, y: 0 });
+  const touchEndRef = useRef({ x: 0, y: 0 });
+  const touchMovedRef = useRef(false);
 
   const handleTouchStart = (e) => {
-    touchStartX = e.targetTouches[0].clientX;
+    touchStartRef.current = {
+      x: e.targetTouches[0].clientX,
+      y: e.targetTouches[0].clientY
+    };
+    touchEndRef.current = {
+      x: e.targetTouches[0].clientX,
+      y: e.targetTouches[0].clientY
+    };
+    touchMovedRef.current = false; // Reset trạng thái chưa di chuyển
   };
 
   const handleTouchMove = (e) => {
-    touchEndX = e.targetTouches[0].clientX;
+    touchEndRef.current = {
+      x: e.targetTouches[0].clientX,
+      y: e.targetTouches[0].clientY
+    };
+    touchMovedRef.current = true; // Đã có di chuyển ngón tay
   };
 
   const handleTouchEnd = () => {
-    // Vuốt từ trái qua phải có khoảng cách lớn hơn 70px -> Back về
-    if (touchStartX - touchEndX < -70 && selectedProductCode) {
+    // 1. Nếu chỉ là chạm (Tap) để bấm nút -> Bỏ qua không thoát
+    if (!touchMovedRef.current) return; 
+
+    const diffX = touchEndRef.current.x - touchStartRef.current.x;
+    const diffY = Math.abs(touchEndRef.current.y - touchStartRef.current.y);
+
+    // 2. Nếu cuộn dọc là chủ yếu (để xem bảng dữ liệu) -> Bỏ qua không thoát
+    if (diffY > 45) return;
+
+    // 3. Chỉ thoát khi vuốt ngang từ trái qua phải rõ ràng (Độ dài > 80px)
+    if (diffX > 80 && selectedProductCode) {
       setSelectedProductCode(null);
     }
   };
@@ -120,10 +142,11 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-10">
       
-      {/* HEADER TĨNH MÀU XÁM THAN CHÌ SANG TRỌNG */}
+      {/* HEADER TĨNH MÀU XÁM THAN CHÌ SANG TRỌNG (Sẽ tự động cuộn lên và ẩn đi khi vuốt màn hình xuống dưới) */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 text-white px-4 py-3.5 shadow-sm">
         <div className="max-w-md mx-auto flex items-center justify-between">
           
+          {/* Logo Lê Trần màu đỏ bên trái cực kỳ nổi bật trên nền xám tối */}
           <div className="flex items-center gap-2.5">
             <img 
               src="https://letranfurniture.com/wp-content/uploads/2025/01/Logo-removebg-preview.png" 
@@ -157,11 +180,11 @@ export default function App() {
         </div>
       </div>
 
-      {/* CỤM STICKY GHIM ĐẦU TRANG KHI VUỐT LÊN (Chỉ còn ô tìm kiếm và dải nút lọc con) */}
+      {/* CỤM STICKY LUÔN CỐ ĐỊNH Ở ĐẦU TRANG KHI VUỐT LÊN (CHỈ CÒN SEARCH BAR VÀ CÁC CHIP LỌC) */}
       <div className="sticky top-0 z-40 bg-slate-50/95 backdrop-blur-md pt-3.5 pb-2.5 px-4 border-b border-slate-200/60 shadow-xs space-y-2.5">
         <div className="max-w-md mx-auto space-y-2.5">
           
-          {/* 1. Ô tìm kiếm cố định cao nhất */}
+          {/* 1. Thanh ô tìm kiếm luôn cố định cao nhất */}
           <div className="relative">
             <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -327,7 +350,7 @@ export default function App() {
                   }}
                   className={`bg-white border border-slate-150 rounded-lg shadow-3xs overflow-hidden transition-all duration-150 active:bg-slate-100 flex flex-col justify-between p-2.5 cursor-pointer ${badge.border}`}
                 >
-                  {/* Dòng 1: Ảnh nhỏ + Tên + Badge trạng thái (CĂN LỀ TRÁI KHOA HỌC) */}
+                  {/* Dòng 1: Ảnh nhỏ + Tên + Badge trạng thái */}
                   <div className="flex items-center gap-2.5 justify-between">
                     <div className="flex items-center gap-2 min-w-0 flex-1 text-left">
                       {prod.hinhAnh ? (
@@ -429,7 +452,7 @@ export default function App() {
         )}
       </div>
 
-      {/* 4. MÀN HÌNH CHI TIẾT TRƯỢT SANG PHẢI (Hỗ trợ vuốt tay từ trái qua phải để backward) */}
+      {/* 4. MÀN HÌNH CHI TIẾT TRƯỢT SANG PHẢI (Có cảm ứng vuốt dứt khoát từ trái qua phải để backward cực nhạy) */}
       <div 
         className={`fixed inset-0 z-50 flex justify-end bg-slate-900/45 backdrop-blur-xs transition-opacity duration-300 ${
           activeDetailProduct ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -443,7 +466,7 @@ export default function App() {
             activeDetailProduct ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
-          {/* CỤM STICKY TRANG CHI TIẾT (Có Searchbar cố định) */}
+          {/* CỤM STICKY TRANG CHI TIẾT (Nút Quay lại dẹt tối giản + Searchbar luôn cố định ở đầu trang) */}
           <div className="sticky top-0 z-50 bg-slate-50 border-b border-slate-200/60 shadow-xs space-y-2 pt-3.5 pb-2.5 px-4">
             
             {/* Hàng nút Back dẹt đen đậm tối giản đồng bộ thương hiệu */}
@@ -507,7 +530,7 @@ export default function App() {
                     onError={(e) => { e.target.style.display = 'none'; }}
                   />
                 ) : (
-                  <div className="w-24 h-24 bg-slate-100 rounded-lg flex items-center justify-center text-slate-400 border border-slate-150 shrink-0">
+                  <div className="w-24 h-24 bg-slate-100 rounded-lg flex items-center justify-center text-slate-450 border border-slate-150 shrink-0">
                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
@@ -702,7 +725,7 @@ export default function App() {
                       ) : (
                         filteredHistoryRows.map((h, idx) => (
                           <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50/50">
-                            <td className="py-2.5 px-3 text-center text-slate-450 font-bold font-mono text-[10px]">
+                            <td className="py-2.5 px-3 text-center text-slate-455 font-bold font-mono text-[10px]">
                               {h.ngay}
                             </td>
                             {/* Chỉ hiển thị tên rút gọn, loại bỏ hoàn toàn mã khung */}
