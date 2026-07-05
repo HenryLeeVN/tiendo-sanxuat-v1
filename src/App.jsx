@@ -371,3 +371,245 @@ export default function App() {
                         <span className="px-1 py-0.5 text-[7px] font-black uppercase rounded bg-blue-100 text-blue-700 border border-blue-200">
                           Đang SX
                         </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Hàng 2: Linh kiện dẹt nằm ngang (KHÔNG CÓ MÃ KHUNG K001) */}
+                  <div className="flex flex-wrap gap-1 mt-2 border-t border-slate-100/60 pt-1.5">
+                    {prod.khung.map(k => {
+                      const isUnder = k.thucTe < k.keHoach;
+                      return (
+                        <div 
+                          key={k.maKhung} 
+                          className="bg-slate-100/60 border border-slate-200/50 rounded px-1.5 py-0.5 text-[9px] font-bold flex items-center gap-1"
+                        >
+                          <span className="text-slate-455 uppercase">{k.tenRutGon}:</span>
+                          <span className={isUnder ? 'text-red-500 font-black' : 'text-green-600 font-black'}>
+                            {k.thucTe}/{k.keHoach}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 4. MÀN HÌNH CHI TIẾT TRƯỢT SANG PHẢI (ẨN HEADER ĐỎ, THANH TÌM KIẾM CỐ ĐỊNH PHÍA TRÊN) */}
+      <div 
+        className={`fixed inset-0 z-50 flex justify-end bg-slate-900/45 backdrop-blur-xs transition-opacity duration-300 ${
+          activeDetailProduct ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        <div 
+          className={`w-full max-w-md bg-slate-50 h-full flex flex-col shadow-2xl transform transition-transform duration-300 ease-out ${
+            activeDetailProduct ? 'translate-x-0' : 'translate-x-full'
+          }`}
+        >
+          {/* CỤM STICKY TRANG CHI TIẾT (Nút Quay lại dẹt tối giản + Searchbar luôn cố định ở đầu trang) */}
+          <div className="sticky top-0 z-50 bg-slate-50 border-b border-slate-200/60 shadow-xs space-y-2 pt-3.5 pb-2.5 px-4">
+            
+            {/* Hàng nút Back dẹt đen đậm tối giản màu đỏ Burgundy đồng bộ thương hiệu */}
+            <div className="flex items-center gap-2 max-w-md mx-auto">
+              <button 
+                onClick={() => setSelectedProductCode(null)}
+                className="flex items-center text-xs font-bold bg-white border border-slate-250 text-slate-500 hover:text-slate-800 px-2.5 py-1.5 rounded-lg transition-colors shrink-0 shadow-3xs"
+              >
+                <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" />
+                </svg>
+                Quay lại
+              </button>
+              
+              {/* Logo Lê Trần nhỏ hiển thị trong header dẹt của trang chi tiết */}
+              <div className="min-w-0 flex-1 flex items-center gap-2">
+                <img 
+                  src="https://letranfurniture.com/wp-content/uploads/2025/01/Logo-removebg-preview.png" 
+                  alt="Lê Trần" 
+                  className="h-6 w-auto object-contain shrink-0"
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+                <h2 className="text-xs font-extrabold text-slate-800 break-words leading-tight pr-1" title={activeDetailProduct?.tenSP}>
+                  {activeDetailProduct && activeTab === 'ctsxProgress' && (
+                    <span className="text-red-600 font-black mr-1 text-[10px] bg-red-50 border border-red-100 px-1 rounded">
+                      {activeDetailProduct.soCTSX}
+                    </span>
+                  )}
+                  {activeDetailProduct?.tenSP}
+                </h2>
+              </div>
+            </div>
+
+            {/* Ô tìm kiếm linh kiện dẹt cố định đồng bộ dưới nút Back */}
+            <div className="relative max-w-md mx-auto">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </span>
+              <input
+                type="text"
+                placeholder="Tìm linh kiện..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-8.5 pr-8 py-2 text-xs bg-white border border-slate-250 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 shadow-3xs"
+              />
+            </div>
+          </div>
+
+          {/* Nội dung chi tiết */}
+          {activeDetailProduct && (
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              
+              {/* Hình ảnh phóng lớn */}
+              {activeDetailProduct.hinhAnh ? (
+                <div className="flex justify-center my-1.5">
+                  <img 
+                    src={activeDetailProduct.hinhAnh} 
+                    alt={activeDetailProduct.tenSP}
+                    className="w-32 h-32 object-cover rounded-xl border border-slate-200 shadow-sm bg-white p-1"
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                </div>
+              ) : null}
+
+              {/* Lựa chọn bộ lọc thời gian Độc lập (Chỉ hiện khi đang ở Tab theo ngày) */}
+              {activeTab === 'dailyPlan' && (
+                <div>
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Chọn thời gian báo cáo</h3>
+                  <div className="grid grid-cols-4 gap-1 bg-slate-200/70 p-0.5 rounded-lg">
+                    {[
+                      { id: 'today', label: 'Hôm nay' },
+                      { id: 'week', label: 'Tuần này' },
+                      { id: 'month', label: 'Tháng' },
+                      { id: 'all', label: 'Tất cả' }
+                    ].map(item => (
+                      <button
+                        key={item.id}
+                        onClick={() => setDetailTimeFilter(item.id)}
+                        className={`py-1.5 text-[10px] font-bold rounded transition-all duration-150 ${
+                          detailTimeFilter === item.id 
+                            ? 'bg-white text-red-600 shadow-2xs' 
+                            : 'text-slate-600'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Bộ lọc linh kiện khung (Chỉ hiện Tên Rút Gọn, ví dụ: Mê (3), Chân (2)...) */}
+              <div>
+                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Bộ lọc linh kiện</h3>
+                <div className="flex flex-wrap gap-1.5 pb-3 border-b border-slate-200">
+                  <button
+                    onClick={() => setDetailFrameFilter('all')}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all duration-150 ${
+                      detailFrameFilter === 'all'
+                        ? 'bg-red-500 border-red-500 text-white shadow-xs'
+                        : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-100'
+                    }`}
+                  >
+                    Tất cả
+                  </button>
+                  {activeDetailProduct.khung.map(k => (
+                    <button
+                      key={k.maKhung}
+                      onClick={() => setDetailFrameFilter(k.tenRutGon)}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all duration-150 ${
+                        detailFrameFilter === k.tenRutGon
+                          ? 'bg-red-500 border-red-500 text-white shadow-xs'
+                          : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-100'
+                      }`}
+                    >
+                      {k.tenRutGon} ({k.bom})
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Bảng chi tiết: Ngày | Tên khung (Tên rút gọn) | Kế hoạch | Thực hiện | +- (KHÔNG CÓ MÃ KHUNG) */}
+              <div>
+                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Bảng lịch sử chi tiết</h3>
+                <div className="overflow-hidden bg-white border border-slate-200 rounded-lg shadow-2xs">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-100 text-slate-500 font-extrabold uppercase border-b border-slate-200">
+                        <th className="py-2.5 px-3 text-center w-24">Ngày</th>
+                        <th className="py-2.5 px-2 text-left">Tên khung</th>
+                        <th className="py-2.5 px-2 text-right">Kế hoạch</th>
+                        <th className="py-2.5 px-2 text-right">Thực hiện</th>
+                        <th className="py-2.5 px-3 text-center w-14">+-</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {/* DÒNG TỔNG CỘNG Ở ĐẦU BẢNG */}
+                      {(() => {
+                        if (filteredHistoryRows.length === 0) return null;
+
+                        const totalKeHoach = filteredHistoryRows.reduce((sum, h) => sum + h.keHoach, 0);
+                        const totalThucTe = filteredHistoryRows.reduce((sum, h) => sum + h.thucTe, 0);
+                        const totalChenhLech = totalThucTe - totalKeHoach;
+
+                        return (
+                          <tr className="bg-slate-100/90 font-black border-b border-slate-200/80">
+                            <td className="py-2.5 px-3 text-center text-[10px] text-slate-600 font-extrabold">TỔNG</td>
+                            <td className="py-2.5 px-2 text-slate-800 text-[11px]">Tất cả</td>
+                            <td className="py-2.5 px-2 text-right text-slate-700">{totalKeHoach}</td>
+                            <td className="py-2.5 px-2 text-right text-slate-900">{totalThucTe}</td>
+                            <td className={`py-2.5 px-3 text-center ${totalChenhLech < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                              {totalChenhLech > 0 ? `+${totalChenhLech}` : totalChenhLech}
+                            </td>
+                          </tr>
+                        );
+                      })()}
+
+                      {filteredHistoryRows.length === 0 ? (
+                        <tr>
+                          <td colSpan="5" className="py-8 text-center text-slate-400 italic font-semibold">
+                            Không có dữ liệu chi tiết
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredHistoryRows.map((h, idx) => (
+                          <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50/50">
+                            <td className="py-2.5 px-3 text-center text-slate-455 font-bold font-mono text-[10px]">
+                              {h.ngay}
+                            </td>
+                            {/* Chỉ hiển thị tên rút gọn, loại bỏ hoàn toàn mã khung */}
+                            <td className="py-2.5 px-2 font-extrabold text-slate-700">
+                              {h.tenRutGon}
+                            </td>
+                            <td className="py-2.5 px-2 text-right text-slate-600 font-bold">
+                              {h.keHoach}
+                            </td>
+                            <td className="py-2.5 px-2 text-right text-slate-855 font-black">
+                              {h.thucTe}
+                            </td>
+                            <td className={`py-2.5 px-3 text-center font-black ${
+                              h.chenhLech < 0 ? 'text-red-500' : 'text-green-600'
+                            }`}>
+                              {h.chenhLech > 0 ? `+${h.chenhLech}` : h.chenhLech}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          )}
+        </div>
+      </div>
+
+    </div>
+  );
+}
