@@ -5,7 +5,7 @@ const API_BASE = "https://script.google.com/macros/s/AKfycbzTy7rkjZbkozDUQoA7hjW
 export default function App() {
   const [activeTab, setActiveTab] = useState('dailyPlan'); // 'dailyPlan' (Theo ngày), 'ctsxProgress' (Theo CTSX)
   const [filter, setFilter] = useState('today'); // 'today', 'week', 'month', 'all'
-  const [selectedCTSX, setSelectedCTSX] = useState('totalOrder'); // 'totalOrder', 'unallocated', 'all', 'CTSX01'...
+  const [selectedCTSX, setSelectedCTSX] = useState('totalOrder'); // 'totalOrder', 'unallocated', 'CTSX01', 'CTSX02'...
   
   const [allReports, setAllReports] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -96,34 +96,41 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-10">
       
-      {/* HEADER TĨNH MÀU ĐỎ ĐÔ BURGUNDY SANG TRỌNG (Sẽ tự động cuộn lên và ẩn đi khi vuốt màn hình xuống) */}
-      <div className="bg-gradient-to-r from-red-700 via-rose-700 to-red-800 text-white px-4 py-2.5">
+      {/* HEADER TĨNH MÀU XÁM THAN CHÌ SANG TRỌNG (Làm bệ đỡ hoàn hảo cho Logo màu đỏ nổi bật lên) */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 text-white px-4 py-3.5 shadow-sm">
         <div className="max-w-md mx-auto flex items-center justify-between">
           
-          {/* Logo Lê Trần bên trái và Chữ phân dòng tinh tế */}
+          {/* Logo Lê Trần màu đỏ bên trái cực kỳ nổi bật trên nền xám tối */}
           <div className="flex items-center gap-2.5">
             <img 
               src="https://letranfurniture.com/wp-content/uploads/2025/01/Logo-removebg-preview.png" 
               alt="Lê Trần Furniture" 
-              className="h-8.5 w-auto object-contain shrink-0"
+              className="h-9 w-auto object-contain shrink-0"
               onError={(e) => { e.target.style.display = 'none'; }}
             />
             <div className="min-w-0">
               <h1 className="text-xs font-black uppercase tracking-wider text-white">Lê Trần Furniture</h1>
-              <p className="text-[9px] text-red-100 font-bold uppercase mt-0.5">Xưởng Cơ khí - Tiến độ</p>
+              <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Xưởng Cơ khí - Tiến độ</p>
             </div>
           </div>
 
-          {/* Nút làm mới */}
+          {/* NÚT TẢI LẠI TRỰC QUAN GỒM CẢ CHỮ VÀ ICON XOAY SANG TRỌNG */}
           <button 
             onClick={fetchAllData}
             disabled={loading}
-            className="p-1 bg-white/20 hover:bg-white/30 rounded-full disabled:opacity-50"
+            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/10 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white transition-all disabled:opacity-50 shrink-0 shadow-3xs"
           >
-            <svg className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <span>Tải lại</span>
+            <svg 
+              className={`w-3 h-3 transition-transform duration-500 ${loading ? 'animate-spin text-red-500' : 'text-slate-300'}`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 3v4M7 9h8v3h-3v9" />
             </svg>
           </button>
+
         </div>
       </div>
 
@@ -413,7 +420,7 @@ export default function App() {
           {/* CỤM STICKY TRANG CHI TIẾT (Nút Quay lại dẹt tối giản + Searchbar luôn cố định ở đầu trang) */}
           <div className="sticky top-0 z-50 bg-slate-50 border-b border-slate-200/60 shadow-xs space-y-2 pt-3.5 pb-2.5 px-4">
             
-            {/* Hàng nút Back dẹt đen đậm tối giản màu đỏ Burgundy đồng bộ thương hiệu */}
+            {/* Hàng nút Back dẹt đen đậm tối giản đồng bộ thương hiệu Lê Trần */}
             <div className="flex items-center gap-2 max-w-md mx-auto">
               <button 
                 onClick={() => setSelectedProductCode(null)}
