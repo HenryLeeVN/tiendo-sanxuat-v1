@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 
-const API_BASE = "https://script.google.com/macros/s/AKfycbzTy7rkjZbkozDUQoA7hjW8YstP6V3uqHqQXukbMOD6qlQv7IvYXO-vHbPbMG_2LYul/exec"; // <-- THAY LINK WEB APP MỚI CỦA BẠN VÀO ĐÂY
+const API_BASE = "https://script.google.com/macros/s/AKfycbzTy7rkjZbkozDUQoA7hjW8YstP6V3uqHqQXukbMOD6qlQv7IvYXO-vHbPbMG_2LYul/exec"; // <-- THAY LINK WEB APP GOOGLE SHEET MỚI VÀO ĐÂY
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dailyPlan'); // 'dailyPlan' (Tiến độ ngày), 'ctsxProgress' (Tiến độ CTSX), 'totalOrder' (Đơn hàng tổng)
+  const [activeTab, setActiveTab] = useState('dailyPlan'); // 'dailyPlan' (Theo ngày), 'ctsxProgress' (Theo CTSX)
   const [filter, setFilter] = useState('today'); // 'today', 'week', 'month', 'all'
-  const [selectedCTSX, setSelectedCTSX] = useState('all'); // Bộ lọc CTSX trên thanh sticky
+  const [selectedCTSX, setSelectedCTSX] = useState('totalOrder'); // 'totalOrder', 'unallocated', 'CTSX01', 'CTSX02'...
   
   const [allReports, setAllReports] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -13,7 +13,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   
   // Trạng thái cho Màn hình chi tiết trượt từ bên phải
-  const [selectedProductCode, setSelectedProductCode] = useState(null); // Lưu Mã định danh SP
+  const [selectedProductCode, setSelectedProductCode] = useState(null); 
   const [detailTimeFilter, setDetailTimeFilter] = useState('today'); 
   const [detailFrameFilter, setDetailFrameFilter] = useState('all');
 
@@ -43,34 +43,40 @@ export default function App() {
     fetchAllData();
   }, []);
 
-  // 1. Trích xuất báo cáo dựa theo thời gian và Tab hiện tại
-  const currentTabReport = allReports?.reports && allReports.reports[filter] 
-    ? allReports.reports[filter][activeTab] 
+  // Nếu là Tab Đợt CTSX thì luôn luôn lấy mốc thời gian 'all' để xem tiến độ tích lũy trọn vẹn, không bị giới hạn ngày
+  const activeFilter = activeTab === 'ctsxProgress' ? 'all' : filter;
+  
+  // Áp dụng cấu trúc dữ liệu tương ứng dựa theo nút bấm đang chọn trong Tab 2
+  const isTotalOrderView = activeTab === 'ctsxProgress' && (selectedCTSX === 'totalOrder' || selectedCTSX === 'unallocated');
+  const activeReportKey = isTotalOrderView ? 'totalOrder' : activeTab;
+
+  const currentTabReport = allReports?.reports && allReports.reports[activeFilter] 
+    ? allReports.reports[activeFilter][activeReportKey] 
     : null;
 
-  // 2. Lọc danh sách sản phẩm theo Tìm kiếm + Bộ lọc số CTSX
+  // Lọc danh sách sản phẩm theo Tìm kiếm + Bộ lọc số CTSX/Order
   const filteredProducts = currentTabReport?.products?.filter(product => {
-    // Lọc theo Tìm kiếm tên sản phẩm
     const matchSearch = product.tenSP.toLowerCase().includes(searchQuery.toLowerCase());
     
-    // Lọc theo Số CTSX (Chỉ áp dụng cho Tab dailyPlan và ctsxProgress có liên quan đến CTSX)
     let matchCTSX = true;
-    if (selectedCTSX !== 'all') {
-      if (activeTab === 'ctsxProgress') {
-        matchCTSX = product.soCTSX === selectedCTSX;
-      } else if (activeTab === 'dailyPlan') {
-        // Tìm xem sản phẩm này ngày hôm đó có chạy linh kiện nào thuộc số CTSX này không
-        matchCTSX = product.khung.some(k => k.keHoach > 0 || k.thucTe > 0); 
-      }
+    if (activeTab === 'ctsxProgress' && selectedCTSX !== 'totalOrder' && selectedCTSX !== 'unallocated') {
+      matchCTSX = product.soCTSX === selectedCTSX;
     }
 
     return matchSearch && matchCTSX;
   }) || [];
 
-  // 3. Lấy ra thông tin sản phẩm đang được chọn xem chi tiết trượt phải
+  // Lấy ra thông tin sản phẩm đang được chọn xem chi tiết trượt phải
   const activeDetailProduct = selectedProductCode && allReports?.reports
-    ? allReports.reports[detailTimeFilter]?.[activeTab]?.products.find(p => (p.tenSP === selectedProductCode || p.soCTSX + p.tenSP === selectedProductCode))
+    ? allReports.reports[detailTimeFilter]?.[activeReportKey]?.products.find(p => (p.tenSP === selectedProductCode || p.soCTSX + p.tenSP === selectedProductCode))
     : null;
+
+  // Lọc bảng lịch sử trong trang chi tiết trượt phải theo ô tìm kiếm chung
+  const filteredHistoryRows = activeDetailProduct?.history ? activeDetailProduct.history.filter(h => {
+    const matchSearchHistory = h.tenRutGon.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchFrameHistory = detailFrameFilter === 'all' || h.tenRutGon === detailFrameFilter;
+    return matchSearchHistory && matchFrameHistory;
+  }) : [];
 
   const getStatusBadge = (status) => {
     switch(status) {
@@ -90,8 +96,8 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-10">
       
-      {/* HEADER TĨNH MÀU ĐỎ (Sẽ ẩn đi khi vuốt màn hình lên) */}
-      <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white px-4 py-2.5 shadow-xs">
+      {/* HEADER TĨNH MÀU ĐỎ (Sẽ tự động cuộn lên và ẩn đi khi vuốt màn hình) */}
+      <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white px-4 py-2.5">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-sm font-extrabold uppercase tracking-wide">X.Cơ khí - Tiến độ sản xuất</h1>
@@ -111,22 +117,44 @@ export default function App() {
         </div>
       </div>
 
-      {/* CỤM STICKY: GHIM CỐ ĐỊNH Ở ĐẦU TRANG KHI CUỘN MÀN HÌNH LÊN */}
-      <div className="sticky top-0 z-40 bg-slate-50/95 backdrop-blur-md pt-3 pb-2 px-4 border-b border-slate-200/60 shadow-xs space-y-2.5">
+      {/* CỤM STICKY LUÔN CỐ ĐỊNH Ở ĐẦU TRANG KHI VUỐT LÊN (CHỈ CÒN SEARCH BAR VÀ CÁC CHIP LỌC) */}
+      <div className="sticky top-0 z-40 bg-slate-50/95 backdrop-blur-md pt-3.5 pb-2.5 px-4 border-b border-slate-200/60 shadow-xs space-y-2.5">
         <div className="max-w-md mx-auto space-y-2.5">
           
-          {/* 3 Tab mục tiêu lớn */}
+          {/* 1. Thanh ô tìm kiếm luôn cố định cao nhất */}
+          <div className="relative">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </span>
+            <input
+              type="text"
+              placeholder="Tìm sản phẩm..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-8.5 pr-8 py-2 text-xs bg-white border border-slate-250 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 shadow-3xs"
+            />
+            {searchQuery && (
+              <button onClick={() => setSearchQuery('')} className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
+
+          {/* 2 Tab lớn sửa tên thành: Theo ngày, Theo CTSX */}
           <div className="flex border-b border-slate-250">
             {[
-              { id: 'dailyPlan', label: 'Kế hoạch ngày' },
-              { id: 'ctsxProgress', label: 'Đợt CTSX' },
-              { id: 'totalOrder', label: 'Đơn hàng tổng' }
+              { id: 'dailyPlan', label: 'Theo ngày' },
+              { id: 'ctsxProgress', label: 'Theo CTSX' }
             ].map(tab => (
               <button
                 key={tab.id}
                 onClick={() => {
                   setActiveTab(tab.id);
-                  setSelectedCTSX('all'); // Reset bộ lọc CTSX khi đổi Tab
+                  setSelectedCTSX(tab.id === 'ctsxProgress' ? 'totalOrder' : 'all'); 
                 }}
                 className={`flex-1 py-2 text-xs font-black text-center border-b-2 transition-all duration-150 ${
                   activeTab === tab.id 
@@ -139,67 +167,74 @@ export default function App() {
             ))}
           </div>
 
-          {/* Thanh lọc CTSX + Tìm kiếm nằm trên 1 hàng ngang */}
-          <div className="grid grid-cols-12 gap-2">
-            {/* Input tìm kiếm */}
-            <div className={`relative ${activeTab !== 'totalOrder' ? 'col-span-8' : 'col-span-12'}`}>
-              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </span>
-              <input
-                type="text"
-                placeholder="Tìm sản phẩm..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 py-2 text-xs bg-white border border-slate-250 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
-              />
-            </div>
-
-            {/* Bộ chọn Dropdown Lọc theo CTSX (Chỉ hiện ở Tab Ngày và Tab CTSX) */}
-            {activeTab !== 'totalOrder' && (
-              <div className="col-span-4">
-                <select
-                  value={selectedCTSX}
-                  onChange={(e) => setSelectedCTSX(e.target.value)}
-                  className="w-full px-2 py-2 text-xs bg-white border border-slate-250 rounded-lg text-slate-700 font-bold focus:outline-none focus:ring-1 focus:ring-red-500"
+          {/* 3. Dải Chip lọc con dẹt nằm dưới Tab (Thời gian hoặc các đợt CTSX dẹt lướt) */}
+          <div>
+            {activeTab === 'dailyPlan' ? (
+              /* Tab Theo ngày: Lọc Hôm nay, Tuần này... */
+              <div className="grid grid-cols-4 gap-1 bg-slate-200/70 p-0.5 rounded-lg">
+                {[
+                  { id: 'today', label: 'Hôm nay' },
+                  { id: 'week', label: 'Tuần này' },
+                  { id: 'month', label: 'Tháng' },
+                  { id: 'all', label: 'Tất cả' }
+                ].map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => setFilter(item.id)}
+                    className={`py-1 text-[11px] font-extrabold rounded-md transition-all duration-150 ${
+                      filter === item.id 
+                        ? 'bg-white text-red-600 shadow-2xs' 
+                        : 'text-slate-600'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              /* Tab Theo CTSX: BỎ HOÀN TOÀN CHIP TẤT CẢ. Chỉ gồm: Tổng order, Chưa phân bổ, CTSX01, CTSX02... */
+              <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 no-scrollbar">
+                <button
+                  onClick={() => setSelectedCTSX('totalOrder')}
+                  className={`px-3 py-1 text-xs font-black rounded-lg border transition-all shrink-0 ${
+                    selectedCTSX === 'totalOrder'
+                      ? 'bg-red-500 border-red-500 text-white shadow-2xs'
+                      : 'bg-white border-slate-200 text-slate-500'
+                  }`}
                 >
-                  <option value="all">Lọc CTSX</option>
-                  {allReports?.ctsxList?.map(so => (
-                    <option key={so} value={so}>{so}</option>
-                  ))}
-                </select>
+                  Tổng order
+                </button>
+                <button
+                  onClick={() => setSelectedCTSX('unallocated')}
+                  className={`px-3 py-1 text-xs font-black rounded-lg border transition-all shrink-0 ${
+                    selectedCTSX === 'unallocated'
+                      ? 'bg-red-500 border-red-500 text-white shadow-2xs'
+                      : 'bg-white border-slate-200 text-slate-500'
+                  }`}
+                >
+                  Chưa phân bổ
+                </button>
+                {allReports?.ctsxList?.map(so => (
+                  <button
+                    key={so}
+                    onClick={() => setSelectedCTSX(so)}
+                    className={`px-3 py-1 text-xs font-black rounded-lg border transition-all duration-150 shrink-0 ${
+                      selectedCTSX === so
+                        ? 'bg-red-500 border-red-500 text-white shadow-2xs'
+                        : 'bg-white border-slate-200 text-slate-500'
+                    }`}
+                  >
+                    {so}
+                  </button>
+                ))}
               </div>
             )}
-          </div>
-
-          {/* Bộ lọc thời gian */}
-          <div className="grid grid-cols-4 gap-1 bg-slate-200/70 p-0.5 rounded-lg">
-            {[
-              { id: 'today', label: 'Hôm nay' },
-              { id: 'week', label: 'Tuần này' },
-              { id: 'month', label: 'Tháng' },
-              { id: 'all', label: 'Tất cả' }
-            ].map(item => (
-              <button
-                key={item.id}
-                onClick={() => setFilter(item.id)}
-                className={`py-1.5 text-[11px] font-extrabold rounded-md transition-all duration-150 ${
-                  filter === item.id 
-                    ? 'bg-white text-red-600 shadow-2xs' 
-                    : 'text-slate-600 hover:text-slate-950'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
           </div>
 
         </div>
       </div>
 
-      {/* THÂN BÁO CÁO CHÍNH */}
+      {/* THÂN DANH SÁCH SẢN PHẨM CHÍNH */}
       <div className="max-w-md mx-auto px-4 mt-3">
 
         {/* 4 Chip tổng quan động theo từng Tab */}
@@ -232,27 +267,28 @@ export default function App() {
           </div>
         )}
 
-        {/* Danh sách các sản phẩm hiển thị siêu dẹt */}
+        {/* Thân danh sách các sản phẩm (Card ngắn dẹt tối ưu) */}
         {!loading && !error && currentTabReport && (
           <div className="space-y-2">
             {filteredProducts.map(prod => {
               const badge = getStatusBadge(prod.trangThai);
-              
-              // Key định danh riêng cho từng sản phẩm ở các tab khác nhau
               const uniqueKey = activeTab === 'ctsxProgress' ? prod.soCTSX + prod.tenSP : prod.tenSP;
+              
+              // Kiểm tra Đang SX: Chỉ cần xưởng có phát sinh thực tế làm linh kiện (> 0) là Đang SX
+              const isProducingCurrently = prod.khung.some(k => k.thucTe > 0);
 
               return (
                 <div 
                   key={uniqueKey} 
                   onClick={() => {
                     setSelectedProductCode(uniqueKey);
-                    setDetailTimeFilter(filter);
+                    setDetailTimeFilter(activeFilter); 
                     setDetailFrameFilter('all');
                   }}
                   className={`bg-white border border-slate-150 rounded-lg shadow-3xs overflow-hidden transition-all duration-150 active:bg-slate-100 flex flex-col justify-between p-2.5 cursor-pointer ${badge.border}`}
                 >
-                  {/* Dòng 1: Ảnh nhỏ + Tên + Badge trạng thái */}
-                  <div className="flex items-start gap-2.5 justify-between">
+                  {/* Dòng 1: Ảnh nhỏ + Tên + Badge trạng thái (LOẠI BỎ TOÀN BỘ MÃ SỐ, Đang SX hiển thị song song) */}
+                  <div className="flex items-center gap-2.5 justify-between">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       {prod.hinhAnh ? (
                         <img 
@@ -262,7 +298,7 @@ export default function App() {
                           onError={(e) => { e.target.style.display = 'none'; }}
                         />
                       ) : (
-                        <div className="w-9 h-9 bg-slate-100 rounded flex items-center justify-center text-slate-450 border border-slate-150 shrink-0">
+                        <div className="w-9 h-9 bg-slate-100 rounded flex items-center justify-center text-slate-455 border border-slate-150 shrink-0">
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
@@ -271,7 +307,7 @@ export default function App() {
                       
                       <div className="min-w-0 flex-1">
                         <h3 className="font-extrabold text-xs text-slate-800 break-words leading-tight pr-1">
-                          {activeTab === 'ctsxProgress' && (
+                          {activeTab === 'ctsxProgress' && prod.soCTSX && (
                             <span className="text-red-600 font-black mr-1 text-[10px] bg-red-50 border border-red-100 px-1 rounded">
                               {prod.soCTSX}
                             </span>
@@ -279,7 +315,7 @@ export default function App() {
                           {prod.tenSP}
                         </h3>
 
-                        {/* SL hiển thị theo Tab tương ứng */}
+                        {/* SL hiển thị gọn theo từng Tab chọn */}
                         <div className="text-[10px] font-bold text-slate-455 flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                           {activeTab === 'dailyPlan' && (
                             <>
@@ -287,18 +323,26 @@ export default function App() {
                               <span className="text-slate-800 font-extrabold">{prod.dongBo}/{prod.keHoach}</span>
                             </>
                           )}
-                          {activeTab === 'ctsxProgress' && (
+                          {activeTab === 'ctsxProgress' && selectedCTSX === 'totalOrder' && (
                             <>
-                              <span>Tiến độ đợt:</span>
-                              <span className="text-slate-800 font-extrabold">{prod.dongBo}/{prod.keHoach}</span>
+                              <span>Đơn hàng:</span>
+                              <span className="text-slate-800 font-extrabold">{prod.dongBo}/{prod.orderQty}</span>
                             </>
                           )}
-                          {activeTab === 'totalOrder' && (
+                          {activeTab === 'ctsxProgress' && selectedCTSX === 'unallocated' && (
                             <>
-                              <span>Order: <b className="text-slate-800 font-extrabold">{prod.orderQty}</b></span>
-                              <span>Đã chia CTSX: <b className="text-slate-800 font-extrabold">{prod.allocated}</b></span>
-                              <span>Chưa chia: <b className="text-slate-800 font-extrabold">{prod.unallocated}</b></span>
-                              <span>Lũy kế: <b className="text-slate-800 font-extrabold">{prod.dongBo}</b></span>
+                              <span>Order:</span>
+                              <span className="text-slate-800 font-extrabold">{prod.orderQty}</span>
+                              <span className="text-slate-400">| Đã lên CTSX:</span>
+                              <span className="text-red-600 font-extrabold">{prod.allocated}</span>
+                              <span className="text-slate-400">| Chưa lên:</span>
+                              <span className="text-slate-800 font-extrabold">{prod.unallocated}</span>
+                            </>
+                          )}
+                          {activeTab === 'ctsxProgress' && selectedCTSX !== 'totalOrder' && selectedCTSX !== 'unallocated' && (
+                            <>
+                              <span>Chỉ thị CTSX:</span>
+                              <span className="text-slate-800 font-extrabold">{prod.dongBo}/{prod.keHoach}</span>
                             </>
                           )}
                           <span className={`font-black ${prod.chenhLech < 0 ? 'text-red-600' : 'text-green-600'}`}>
@@ -308,13 +352,20 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Badge trạng thái */}
-                    <span className={`px-1.5 py-0.5 text-[8px] font-bold uppercase rounded border shrink-0 ${badge.bg}`}>
-                      {badge.text}
-                    </span>
+                    {/* Badge tiến độ + Badge Đang SX song song */}
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className={`px-1.5 py-0.5 text-[8px] font-bold uppercase rounded border ${badge.bg}`}>
+                        {badge.text}
+                      </span>
+                      {isProducingCurrently && (
+                        <span className="px-1 py-0.5 text-[7px] font-black uppercase rounded bg-blue-100 text-blue-700 border border-blue-200">
+                          Đang SX
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Dòng 2: Hiển thị các khung dẹt nằm ngang */}
+                  {/* Hàng 2: Linh kiện dẹt nằm ngang (KHÔNG CÓ MÃ KHUNG K001) */}
                   <div className="flex flex-wrap gap-1 mt-2 border-t border-slate-100/60 pt-1.5">
                     {prod.khung.map(k => {
                       const isUnder = k.thucTe < k.keHoach;
@@ -338,7 +389,7 @@ export default function App() {
         )}
       </div>
 
-      {/* 5. MÀN HÌNH CHI TIẾT TRƯỢT SANG PHẢI (Drawer) */}
+      {/* 4. MÀN HÌNH CHI TIẾT TRƯỢT SANG PHẢI (ẨN HEADER ĐỎ, THANH TÌM KIẾM CỐ ĐỊNH PHÍA TRÊN) */}
       <div 
         className={`fixed inset-0 z-50 flex justify-end bg-slate-900/45 backdrop-blur-xs transition-opacity duration-300 ${
           activeDetailProduct ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -349,34 +400,54 @@ export default function App() {
             activeDetailProduct ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
-          {/* Header chi tiết */}
-          <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white p-3 flex items-center gap-2">
-            <button 
-              onClick={() => setSelectedProductCode(null)}
-              className="flex items-center text-xs font-bold bg-white/20 hover:bg-white/30 px-2.5 py-1.5 rounded-lg transition-colors shrink-0"
-            >
-              <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" />
-              </svg>
-              Quay lại
-            </button>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-xs font-extrabold break-words pr-1 leading-tight" title={activeDetailProduct?.tenSP}>
-                {activeDetailProduct && activeTab === 'ctsxProgress' && (
-                  <span className="bg-white/20 text-white border border-white/30 px-1 rounded mr-1">
-                    {activeDetailProduct.soCTSX}
-                  </span>
-                )}
-                {activeDetailProduct?.tenSP}
-              </h2>
+          {/* CỤM STICKY TRANG CHI TIẾT (Nút Quay lại dẹt tối giản + Searchbar luôn cố định ở đầu trang) */}
+          <div className="sticky top-0 z-50 bg-slate-50 border-b border-slate-200/60 shadow-xs space-y-2 pt-3.5 pb-2.5 px-4">
+            
+            {/* Hàng nút Back dẹt đen đậm tối giản (Không Header đỏ) */}
+            <div className="flex items-center gap-2 max-w-md mx-auto">
+              <button 
+                onClick={() => setSelectedProductCode(null)}
+                className="flex items-center text-xs font-bold bg-white border border-slate-250 text-slate-500 hover:text-slate-800 px-2.5 py-1.5 rounded-lg transition-colors shrink-0 shadow-3xs"
+              >
+                <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7" />
+                </svg>
+                Quay lại
+              </button>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-xs font-extrabold text-slate-800 break-words leading-tight pr-1" title={activeDetailProduct?.tenSP}>
+                  {activeDetailProduct && activeTab === 'ctsxProgress' && (
+                    <span className="text-red-600 font-black mr-1 text-[10px] bg-red-50 border border-red-100 px-1 rounded">
+                      {activeDetailProduct.soCTSX}
+                    </span>
+                  )}
+                  {activeDetailProduct?.tenSP}
+                </h2>
+              </div>
+            </div>
+
+            {/* Ô tìm kiếm linh kiện dẹt cố định đồng bộ dưới nút Back */}
+            <div className="relative max-w-md mx-auto">
+              <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </span>
+              <input
+                type="text"
+                placeholder="Tìm linh kiện..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-8.5 pr-8 py-2 text-xs bg-white border border-slate-250 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 shadow-3xs"
+              />
             </div>
           </div>
 
-          {/* Thân trang chi tiết */}
+          {/* Nội dung chi tiết */}
           {activeDetailProduct && (
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               
-              {/* Ảnh phóng lớn */}
+              {/* Hình ảnh phóng lớn */}
               {activeDetailProduct.hinhAnh ? (
                 <div className="flex justify-center my-1.5">
                   <img 
@@ -388,32 +459,34 @@ export default function App() {
                 </div>
               ) : null}
 
-              {/* Bộ lọc thời gian Độc lập */}
-              <div>
-                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Chọn thời gian báo cáo</h3>
-                <div className="grid grid-cols-4 gap-1 bg-slate-200/70 p-0.5 rounded-lg">
-                  {[
-                    { id: 'today', label: 'Hôm nay' },
-                    { id: 'week', label: 'Tuần này' },
-                    { id: 'month', label: 'Tháng' },
-                    { id: 'all', label: 'Tất cả' }
-                  ].map(item => (
-                    <button
-                      key={item.id}
-                      onClick={() => setDetailTimeFilter(item.id)}
-                      className={`py-1.5 text-[10px] font-extrabold rounded transition-all duration-150 ${
-                        detailTimeFilter === item.id 
-                          ? 'bg-white text-red-600 shadow-2xs' 
-                          : 'text-slate-600 hover:text-slate-950'
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
+              {/* Lựa chọn bộ lọc thời gian Độc lập (Chỉ hiện khi đang ở Tab theo ngày) */}
+              {activeTab === 'dailyPlan' && (
+                <div>
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Chọn thời gian báo cáo</h3>
+                  <div className="grid grid-cols-4 gap-1 bg-slate-200/70 p-0.5 rounded-lg">
+                    {[
+                      { id: 'today', label: 'Hôm nay' },
+                      { id: 'week', label: 'Tuần này' },
+                      { id: 'month', label: 'Tháng' },
+                      { id: 'all', label: 'Tất cả' }
+                    ].map(item => (
+                      <button
+                        key={item.id}
+                        onClick={() => setDetailTimeFilter(item.id)}
+                        className={`py-1.5 text-[10px] font-bold rounded transition-all duration-150 ${
+                          detailTimeFilter === item.id 
+                            ? 'bg-white text-red-600 shadow-2xs' 
+                            : 'text-slate-600'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* Bộ lọc linh kiện rút gọn, ví dụ: Mê (3) */}
+              {/* Bộ lọc linh kiện khung (Chỉ hiện Tên Rút Gọn, ví dụ: Mê (3), Chân (2)...) */}
               <div>
                 <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Bộ lọc linh kiện</h3>
                 <div className="flex flex-wrap gap-1.5 pb-3 border-b border-slate-200">
@@ -443,7 +516,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Bảng chi tiết: Ngày | Tên khung | Kế hoạch | Thực hiện | +- */}
+              {/* Bảng chi tiết: Ngày | Tên khung (Tên rút gọn) | Kế hoạch | Thực hiện | +- (KHÔNG CÓ MÃ KHUNG) */}
               <div>
                 <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Bảng lịch sử chi tiết</h3>
                 <div className="overflow-hidden bg-white border border-slate-200 rounded-lg shadow-2xs">
@@ -460,15 +533,10 @@ export default function App() {
                     <tbody>
                       {/* DÒNG TỔNG CỘNG Ở ĐẦU BẢNG */}
                       {(() => {
-                        const historyRows = activeDetailProduct.history ? activeDetailProduct.history.filter(h => {
-                          if (detailFrameFilter === 'all') return true;
-                          return h.tenRutGon === detailFrameFilter;
-                        }) : [];
+                        if (filteredHistoryRows.length === 0) return null;
 
-                        if (historyRows.length === 0) return null;
-
-                        const totalKeHoach = historyRows.reduce((sum, h) => sum + h.keHoach, 0);
-                        const totalThucTe = historyRows.reduce((sum, h) => sum + h.thucTe, 0);
+                        const totalKeHoach = filteredHistoryRows.reduce((sum, h) => sum + h.keHoach, 0);
+                        const totalThucTe = filteredHistoryRows.reduce((sum, h) => sum + h.thucTe, 0);
                         const totalChenhLech = totalThucTe - totalKeHoach;
 
                         return (
@@ -484,42 +552,35 @@ export default function App() {
                         );
                       })()}
 
-                      {activeDetailProduct.history && activeDetailProduct.history.filter(h => {
-                        if (detailFrameFilter === 'all') return true;
-                        return h.tenRutGon === detailFrameFilter;
-                      }).length === 0 ? (
+                      {filteredHistoryRows.length === 0 ? (
                         <tr>
                           <td colSpan="5" className="py-8 text-center text-slate-400 italic font-semibold">
                             Không có dữ liệu chi tiết
                           </td>
                         </tr>
                       ) : (
-                        activeDetailProduct.history && activeDetailProduct.history
-                          .filter(h => {
-                            if (detailFrameFilter === 'all') return true;
-                            return h.tenRutGon === detailFrameFilter;
-                          })
-                          .map((h, idx) => (
-                            <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50/50">
-                              <td className="py-2.5 px-3 text-center text-slate-455 font-bold font-mono text-[10px]">
-                                {h.ngay}
-                              </td>
-                              <td className="py-2.5 px-2 font-extrabold text-slate-700">
-                                {h.tenRutGon}
-                              </td>
-                              <td className="py-2.5 px-2 text-right text-slate-600 font-bold">
-                                {h.keHoach}
-                              </td>
-                              <td className="py-2.5 px-2 text-right text-slate-855 font-black">
-                                {h.thucTe}
-                              </td>
-                              <td className={`py-2.5 px-3 text-center font-black ${
-                                h.chenhLech < 0 ? 'text-red-500' : 'text-green-600'
-                              }`}>
-                                {h.chenhLech > 0 ? `+${h.chenhLech}` : h.chenhLech}
-                              </td>
-                            </tr>
-                          ))
+                        filteredHistoryRows.map((h, idx) => (
+                          <tr key={idx} className="border-b border-slate-100 hover:bg-slate-50/50">
+                            <td className="py-2.5 px-3 text-center text-slate-450 font-bold font-mono text-[10px]">
+                              {h.ngay}
+                            </td>
+                            {/* Chỉ hiển thị tên rút gọn, loại bỏ hoàn toàn mã khung */}
+                            <td className="py-2.5 px-2 font-extrabold text-slate-700">
+                              {h.tenRutGon}
+                            </td>
+                            <td className="py-2.5 px-2 text-right text-slate-600 font-bold">
+                              {h.keHoach}
+                            </td>
+                            <td className="py-2.5 px-2 text-right text-slate-855 font-black">
+                              {h.thucTe}
+                            </td>
+                            <td className={`py-2.5 px-3 text-center font-black ${
+                              h.chenhLech < 0 ? 'text-red-500' : 'text-green-600'
+                            }`}>
+                              {h.chenhLech > 0 ? `+${h.chenhLech}` : h.chenhLech}
+                            </td>
+                          </tr>
+                        ))
                       )}
                     </tbody>
                   </table>
