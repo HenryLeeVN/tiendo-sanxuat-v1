@@ -84,7 +84,10 @@ export default function App() {
     fetchAllData();
   }, []);
 
+  // Nếu là Tab Theo CTSX thì luôn luôn lấy mốc thời gian 'all' để xem tiến độ tích lũy trọn vẹn, không bị giới hạn ngày
   const activeFilter = activeTab === 'ctsxProgress' ? 'all' : filter;
+  
+  // Áp dụng cấu trúc dữ liệu tương ứng dựa theo nút bấm đang chọn trong Tab 2
   const isTotalOrderView = activeTab === 'ctsxProgress' && (selectedCTSX === 'totalOrder' || selectedCTSX === 'unallocated');
   const activeReportKey = isTotalOrderView ? 'totalOrder' : activeTab;
 
@@ -129,6 +132,10 @@ export default function App() {
     : [];
 
   const getStatusBadge = (status) => {
+    if (activeTab === 'ctsxProgress' && (status === 'onSchedule' || status === 'ahead')) {
+      // Đổi Đúng tiến độ / Vượt tiến độ thành HOÀN THÀNH độc lập khi xem đợt CTSX (Theo yêu cầu)
+      return { text: 'Hoàn thành', bg: 'bg-green-100 text-green-800 border-green-200', border: 'border-l-[5px] border-l-green-500' };
+    }
     switch(status) {
       case 'producing':
         return { text: 'Đang SX', bg: 'bg-blue-100 text-blue-800 border-blue-200', border: 'border-l-[5px] border-l-blue-500' };
@@ -151,35 +158,39 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-10">
       
       {/* HEADER TĨNH MÀU XÁM THAN CHÌ */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 text-white px-4 py-3.5 shadow-sm">
+      <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 text-white px-4 py-3 shadow-sm">
         <div className="max-w-md mx-auto flex items-center justify-between">
           
-          <div className="flex items-center gap-2.5">
+          {/* Logo thu nhỏ lại cho cân đối hơn (h-7.5) */}
+          <div className="flex items-center gap-2">
             <img 
               src="https://letranfurniture.com/wp-content/uploads/2025/01/Logo-removebg-preview.png" 
               alt="Lê Trần Furniture" 
-              className="h-9 w-auto object-contain shrink-0"
+              className="h-7.5 w-auto object-contain shrink-0"
               onError={(e) => { e.target.style.display = 'none'; }}
             />
             <div className="min-w-0 text-left">
-              <h1 className="text-xs font-black uppercase tracking-wider text-white">Lê Trần Furniture</h1>
-              <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Xưởng Cơ khí - Tiến độ</p>
+              <h1 className="text-[11px] font-black uppercase tracking-wider text-white">Lê Trần Furniture</h1>
+              <p className="text-[8.5px] text-slate-400 font-bold uppercase mt-0.5">Xưởng Cơ khí - Tiến độ</p>
             </div>
           </div>
 
+          {/* NÚT TẢI LẠI TRỰC QUAN GỒM CHỮ VÀ ICON MỜI TINH XẢO HƠN */}
           <button 
             onClick={fetchAllData}
             disabled={loading}
-            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/10 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white transition-all disabled:opacity-50 shrink-0 shadow-3xs"
+            className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/10 px-2 py-1.5 rounded-lg text-xs font-bold text-white transition-all disabled:opacity-50 shrink-0 shadow-3xs"
           >
             <span>Tải lại</span>
+            {/* Icon làm mới thế hệ mới thanh nét dày mỏng chuẩn Apple */}
             <svg 
-              className={`w-3 h-3 transition-transform duration-500 ${loading ? 'animate-spin text-red-500' : 'text-slate-300'}`} 
+              className={`w-3.5 h-3.5 transition-transform duration-500 ${loading ? 'animate-spin text-red-500' : 'hover:rotate-180 text-slate-300'}`} 
               fill="none" 
               stroke="currentColor" 
               viewBox="0 0 24 24"
+              strokeWidth="2.2"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 3v4M7 9h8v3h-3v9" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 3v4M7 9h8v3h-3v9" />
             </svg>
           </button>
 
@@ -239,6 +250,7 @@ export default function App() {
           {/* 3. Dải Chip lọc con dẹt nằm dưới Tab */}
           <div>
             {activeTab === 'dailyPlan' ? (
+              /* Tab Theo ngày: Lọc Hôm nay, Tuần này... */
               <div className="grid grid-cols-4 gap-1 bg-slate-200/70 p-0.5 rounded-lg">
                 {[
                   { id: 'today', label: 'Hôm nay' },
@@ -260,6 +272,7 @@ export default function App() {
                 ))}
               </div>
             ) : (
+              /* Tab Theo CTSX: BỎ HOÀN TOÀN CHIP TẤT CẢ. Chỉ gồm: Tổng order, Chưa phân bổ, CTSX01, CTSX02... */
               <div className="flex items-center gap-1.5 overflow-x-auto py-0.5 no-scrollbar">
                 <button
                   onClick={() => setSelectedCTSX('totalOrder')}
@@ -362,7 +375,7 @@ export default function App() {
                           onError={(e) => { e.target.style.display = 'none'; }}
                         />
                       ) : (
-                        <div className="w-9 h-9 bg-slate-100 rounded flex items-center justify-center text-slate-455 border border-slate-150 shrink-0">
+                        <div className="w-9 h-9 bg-slate-100 rounded flex items-center justify-center text-slate-450 border border-slate-150 shrink-0">
                           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
@@ -380,47 +393,47 @@ export default function App() {
                         </h3>
 
                         {/* SL hiển thị gọn theo từng Tab chọn, có ngăn cách dấu chấm hàng nghìn */}
-                        <div className="text-[10px] font-bold text-slate-455 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-1">
+                        <div className="text-[10px] font-bold text-slate-500 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-1">
                           {activeTab === 'dailyPlan' && (
                             <>
-                              <span>Thực hiện:</span>
-                              <span className="text-slate-850 font-extrabold">{formatNum(prod.dongBo)}</span>
+                              <span className="text-slate-400 font-bold">Thực hiện:</span>
+                              <span className="text-slate-900 font-extrabold">{formatNum(prod.dongBo)}</span>
                               <span className="text-slate-300">|</span>
-                              <span>Kế hoạch ngày:</span>
-                              <span className="text-slate-850 font-extrabold">{formatNum(prod.keHoach)}</span>
+                              <span className="text-slate-400 font-bold">Kế hoạch ngày:</span>
+                              <span className="text-slate-900 font-extrabold">{formatNum(prod.keHoach)}</span>
                             </>
                           )}
                           {activeTab === 'ctsxProgress' && selectedCTSX === 'totalOrder' && (
                             <>
-                              <span>Thực hiện tích lũy:</span>
-                              <span className="text-slate-850 font-extrabold">{formatNum(prod.dongBo)}</span>
+                              <span className="text-slate-400 font-bold">Thực hiện tích lũy:</span>
+                              <span className="text-slate-900 font-extrabold">{formatNum(prod.dongBo)}</span>
                               <span className="text-slate-300">|</span>
-                              <span>Tổng đơn hàng:</span>
-                              <span className="text-slate-850 font-extrabold">{formatNum(prod.orderQty)}</span>
+                              <span className="text-slate-400 font-bold">Tổng đơn hàng:</span>
+                              <span className="text-slate-900 font-extrabold">{formatNum(prod.orderQty)}</span>
                             </>
                           )}
                           {activeTab === 'ctsxProgress' && selectedCTSX === 'unallocated' && (
                             <>
-                              <span>Tổng order:</span>
-                              <span className="text-slate-850 font-extrabold">{formatNum(prod.orderQty)}</span>
+                              <span className="text-slate-400 font-bold">Tổng order:</span>
+                              <span className="text-slate-900 font-extrabold">{formatNum(prod.orderQty)}</span>
                               <span className="text-slate-300">|</span>
-                              <span>Đã chia:</span>
+                              <span className="text-slate-400 font-bold">Đã chia:</span>
                               <span className="text-red-600 font-extrabold">{formatNum(prod.allocated)}</span>
                               <span className="text-slate-300">|</span>
-                              <span>Chưa chia:</span>
-                              <span className="text-slate-850 font-extrabold">{formatNum(prod.unallocated)}</span>
+                              <span className="text-slate-400 font-bold">Chưa chia:</span>
+                              <span className="text-slate-900 font-extrabold">{formatNum(prod.unallocated)}</span>
                             </>
                           )}
                           {activeTab === 'ctsxProgress' && selectedCTSX !== 'totalOrder' && selectedCTSX !== 'unallocated' && (
                             <>
-                              <span>Thực hiện mẻ:</span>
-                              <span className="text-slate-850 font-extrabold">{formatNum(prod.dongBo)}</span>
+                              <span className="text-slate-400 font-bold">Thực hiện mẻ:</span>
+                              <span className="text-slate-900 font-extrabold">{formatNum(prod.dongBo)}</span>
                               <span className="text-slate-300">|</span>
-                              <span>Mục tiêu CTSX:</span>
-                              <span className="text-slate-850 font-extrabold">{formatNum(prod.keHoach)}</span>
+                              <span className="text-slate-400 font-bold">Mục tiêu CTSX:</span>
+                              <span className="text-slate-900 font-extrabold">{formatNum(prod.keHoach)}</span>
                             </>
                           )}
-                          <span className={`font-black ${prod.chenhLech < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                          <span className={`font-black ml-0.5 ${prod.chenhLech < 0 ? 'text-red-600' : 'text-green-600'}`}>
                             ({prod.chenhLech > 0 ? `+${formatNum(prod.chenhLech)}` : formatNum(prod.chenhLech)})
                           </span>
                         </div>
@@ -432,7 +445,7 @@ export default function App() {
                         {badge.text}
                       </span>
                       {isProducingCurrently && (
-                        <span className="px-1 py-0.5 text-[7px] font-black uppercase rounded bg-blue-100 text-blue-700 border border-blue-200">
+                        <span className="px-1 py-0.5 text-[7px] font-black uppercase rounded bg-blue-100 text-blue-700 border-blue-200">
                           Đang SX
                         </span>
                       )}
@@ -463,7 +476,7 @@ export default function App() {
         )}
       </div>
 
-      {/* 4. MÀN HÌNH CHI TIẾT TRƯỢT SANG PHẢI ( Drawer bám dính bộ lọc và ô tìm kiếm chống sụp ) */}
+      {/* 4. MÀN HÌNH CHI TIẾT TRƯỢT SANG PHẢI (Có ghim cố định chip lọc và search bar ở đầu trang chi tiết) */}
       <div 
         className={`fixed inset-0 z-50 flex justify-end bg-slate-900/45 backdrop-blur-xs transition-opacity duration-300 ${
           activeDetailProduct ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -477,10 +490,9 @@ export default function App() {
             activeDetailProduct ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
-          {/* CỤM STICKY TRANG CHI TIẾT (Back + Tên dẹt + Ô tìm kiếm + Bộ lọc ghim cố định) */}
+          {/* CỤM STICKY TRANG CHI TIẾT (Back + Tên dẹt + Ô tìm kiếm + Bộ lọc con luôn ghim cố định khi vuốt) */}
           <div className="sticky top-0 z-50 bg-slate-50 border-b border-slate-200/60 shadow-xs space-y-2 pt-3.5 pb-2.5 px-4">
             
-            {/* Hàng nút Back dẹt đen đậm tối giản đồng bộ thương hiệu */}
             <div className="flex items-center gap-2 max-w-md mx-auto">
               <button 
                 onClick={() => setSelectedProductName(null)}
@@ -526,7 +538,7 @@ export default function App() {
               />
             </div>
 
-            {/* BỘ LỌC ĐỒNG BỘ: Luôn xuất hiện bám dính ở trang chi tiết khi vuốt cuộn */}
+            {/* BỘ LỌC CON LUÔN GHIM CỐ ĐỊNH Ở ĐẦU TRANG CHI TIẾT KHI VUỐT CUỘN */}
             <div className="max-w-md mx-auto pt-1">
               {activeTab === 'dailyPlan' ? (
                 /* Bộ lọc thời gian Độc lập */
@@ -596,8 +608,9 @@ export default function App() {
           {activeDetailProduct && (
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               
-              {/* === THIẾT KẾ CARD NGANG TÍCH HỢP TỔNG QUAN VÀ PHÂN BỔ CTSX (Tối ưu tuyệt đối theo ảnh mẫu) === */}
+              {/* === THIẾT KẾ CARD NGANG TÍCH HỢP TỔNG QUAN VÀ PHÂN BỔ CTSX (Tối ưu tuyệt đối, lề lối rõ ràng) === */}
               <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col gap-3.5 shadow-3xs text-left">
+                
                 {/* Dòng Profile chính */}
                 <div className="flex gap-3.5 items-start">
                   {activeDetailProduct.hinhAnh ? (
@@ -627,31 +640,31 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* Các thông số gộp dẹt gọn gàng bên phải ảnh */}
+                    {/* Các thông số gộp dẹt gọn gàng bên phải ảnh (PHÂN BIỆT RÕ RÀNG MÀU CHỮ THỰC HIỆN / KẾ HOẠCH) */}
                     <div className="text-[10px] font-bold text-slate-500 mt-2 space-y-1 border-t border-slate-100 pt-2">
                       {activeTab === 'dailyPlan' ? (
                         <>
-                          <div className="flex justify-between"><span>Kế hoạch ngày:</span><span className="text-slate-800 font-extrabold">{formatNum(activeDetailProduct.keHoach)}</span></div>
-                          <div className="flex justify-between"><span>Thực hiện ngày:</span><span className="text-slate-800 font-extrabold">{formatNum(activeDetailProduct.dongBo)}</span></div>
-                          <div className="flex justify-between"><span>Chênh lệch ngày:</span><span className={`font-black ${activeDetailProduct.chenhLech < 0 ? 'text-red-600' : 'text-green-600'}`}>{activeDetailProduct.chenhLech > 0 ? `+${formatNum(activeDetailProduct.chenhLech)}` : formatNum(activeDetailProduct.chenhLech)}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Kế hoạch ngày (KH):</span><span className="text-slate-900 font-extrabold">{formatNum(activeDetailProduct.keHoach)}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Thực hiện ngày (TH):</span><span className="text-slate-900 font-black">{formatNum(activeDetailProduct.dongBo)}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Chênh lệch ngày:</span><span className={`font-black ${activeDetailProduct.chenhLech < 0 ? 'text-red-600' : 'text-green-600'}`}>{activeDetailProduct.chenhLech > 0 ? `+${formatNum(activeDetailProduct.chenhLech)}` : formatNum(activeDetailProduct.chenhLech)}</span></div>
                         </>
                       ) : selectedCTSX === 'unallocated' ? (
                         <>
-                          <div className="flex justify-between"><span>Tổng đơn hàng:</span><span className="text-slate-800 font-extrabold">{formatNum(activeDetailProduct.orderQty)}</span></div>
-                          <div className="flex justify-between"><span>Đã chia chỉ thị:</span><span className="text-slate-800 font-extrabold">{formatNum(activeDetailProduct.allocated)}</span></div>
-                          <div className="flex justify-between"><span>Chưa chia chỉ thị:</span><span className="text-red-600 font-extrabold">{formatNum(activeDetailProduct.unallocated)}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Tổng đơn hàng:</span><span className="text-slate-900 font-extrabold">{formatNum(activeDetailProduct.orderQty)}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Đã chia chỉ thị:</span><span className="text-slate-900 font-extrabold">{formatNum(activeDetailProduct.allocated)}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Chưa chia chỉ thị:</span><span className="text-red-600 font-extrabold">{formatNum(activeDetailProduct.unallocated)}</span></div>
                         </>
                       ) : selectedCTSX === 'totalOrder' ? (
                         <>
-                          <div className="flex justify-between"><span>Tổng đơn hàng:</span><span className="text-slate-800 font-extrabold">{formatNum(activeDetailProduct.orderQty)}</span></div>
-                          <div className="flex justify-between"><span>Thực hiện tích lũy:</span><span className="text-slate-800 font-extrabold">{formatNum(activeDetailProduct.dongBo)}</span></div>
-                          <div className="flex justify-between"><span>Còn lại đơn hàng:</span><span className="text-red-600 font-black">{formatNum(activeDetailProduct.orderQty - activeDetailProduct.dongBo)}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Tổng đơn hàng (Order):</span><span className="text-slate-900 font-extrabold">{formatNum(activeDetailProduct.orderQty)}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Thực hiện tích lũy:</span><span className="text-slate-900 font-black">{formatNum(activeDetailProduct.dongBo)}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Còn lại đơn hàng:</span><span className="text-red-600 font-black">{formatNum(activeDetailProduct.orderQty - activeDetailProduct.dongBo)}</span></div>
                         </>
                       ) : (
                         <>
-                          <div className="flex justify-between"><span>Mục tiêu {selectedCTSX}:</span><span className="text-slate-800 font-extrabold">{formatNum(activeDetailProduct.keHoach)}</span></div>
-                          <div className="flex justify-between"><span>Thực hiện chỉ thị:</span><span className="text-slate-800 font-extrabold">{formatNum(activeDetailProduct.dongBo)}</span></div>
-                          <div className="flex justify-between"><span>Còn lại chỉ thị:</span><span className="text-red-600 font-black">{formatNum(activeDetailProduct.keHoach - activeDetailProduct.dongBo > 0 ? activeDetailProduct.keHoach - activeDetailProduct.dongBo : 0)}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Mục tiêu {selectedCTSX}:</span><span className="text-slate-900 font-extrabold">{formatNum(activeDetailProduct.keHoach)}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Thực hiện chỉ thị:</span><span className="text-slate-900 font-black">{formatNum(activeDetailProduct.dongBo)}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Còn lại chỉ thị:</span><span className="text-red-600 font-black">{formatNum(activeDetailProduct.keHoach - activeDetailProduct.dongBo > 0 ? activeDetailProduct.keHoach - activeDetailProduct.dongBo : 0)}</span></div>
                         </>
                       )}
                     </div>
@@ -666,10 +679,10 @@ export default function App() {
                       <span className="text-slate-800">Tích lũy: {formatNum(activeDetailProduct.dongBo)}/{formatNum(activeDetailProduct.orderQty)}</span>
                     </div>
                     <div className="overflow-hidden border border-slate-150 rounded-lg">
-                      <table className="w-full text-[10px] text-left border-collapse">
+                      <table className="w-full text-[10px] border-collapse">
                         <thead>
                           <tr className="bg-slate-50 text-slate-500 font-extrabold uppercase border-b border-slate-150">
-                            <th className="py-1.5 px-3">Chỉ thị</th>
+                            <th className="py-1.5 px-3 text-left">Chỉ thị</th>
                             <th className="py-1.5 px-1 text-right">Mục tiêu</th>
                             <th className="py-1.5 px-1 text-right">Đã làm</th>
                             <th className="py-1.5 px-3 text-right">Còn lại</th>
@@ -682,9 +695,9 @@ export default function App() {
                               const remaining = pC.keHoach - pC.dongBo;
                               return (
                                 <tr key={idx} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
-                                  <td className="py-1.5 px-3 font-bold text-red-600 font-mono">{pC.soCTSX}</td>
+                                  <td className="py-1.5 px-3 font-bold text-red-600 font-mono text-left">{pC.soCTSX}</td>
                                   <td className="py-1.5 px-1 text-right text-slate-600 font-bold">{formatNum(pC.keHoach)}</td>
-                                  <td className="py-1.5 px-1 text-right text-slate-800 font-bold">{formatNum(pC.dongBo)}</td>
+                                  <td className="py-1.5 px-1 text-right text-slate-800 font-black">{formatNum(pC.dongBo)}</td>
                                   <td className={`py-1.5 px-3 text-right font-black ${remaining > 0 ? 'text-red-500' : 'text-green-600'}`}>
                                     {remaining > 0 ? formatNum(remaining) : 0}
                                   </td>
