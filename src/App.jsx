@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 const API_BASE = "https://script.google.com/macros/s/AKfycbzTy7rkjZbkozDUQoA7hjW8YstP6V3uqHqQXukbMOD6qlQv7IvYXO-vHbPbMG_2LYul/exec"; // <-- ĐÃ ĐỒNG BỘ LINK WEB APP MỚI CỦA BẠN
 
 export default function App() {
-  const [activeDept, setActiveDept] = useState('cokhi'); // Phân hệ phòng ban chính: 'cokhi' (Đang chạy), 'raphan' (Đang phát triển), 'dinhhinh' (Đang phát triển), 'khuonga' (Đang phát triển)
+  const [activeDept, setActiveDept] = useState('raphan'); // 5 Phân hệ phòng ban: 'raphan' (Ráp hàn - Đang chạy), 'dinhhinh' (Đang phát triển), 'khuonga' (Đang phát triển), 'nhansu' (Đang phát triển), 'thongbao' (Đang phát triển)
   const [activeTab, setActiveTab] = useState('dailyPlan'); // 'dailyPlan' (Theo ngày), 'ctsxProgress' (Theo CTSX)
   const [filter, setFilter] = useState('today'); // 'today', 'week', 'month', 'all'
   const [selectedCTSX, setSelectedCTSX] = useState('totalOrder'); // 'totalOrder', 'unallocated', 'LSX08'...
@@ -85,10 +85,7 @@ export default function App() {
     fetchAllData();
   }, []);
 
-  // Nếu là Tab Theo CTSX thì luôn luôn lấy mốc thời gian 'all' để xem tiến độ tích lũy trọn vẹn, không bị giới hạn ngày
   const activeFilter = activeTab === 'ctsxProgress' ? 'all' : filter;
-  
-  // Áp dụng cấu trúc dữ liệu tương ứng dựa theo nút bấm đang chọn trong Tab 2
   const isTotalOrderView = activeTab === 'ctsxProgress' && (selectedCTSX === 'totalOrder' || selectedCTSX === 'unallocated');
   const activeReportKey = isTotalOrderView ? 'totalOrder' : activeTab;
 
@@ -157,13 +154,14 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans pb-10">
       
-      {/* 1. HIỂN THỊ PHÂN HỆ CƠ KHÍ HIỆN TẠI (CHỈ CHẠY KHI ĐANG CHỌN TAB CƠ KHÍ) */}
-      {activeDept === 'cokhi' ? (
+      {/* 1. HIỂN THỊ PHÂN HỆ RÁP HÀN (CHỈ CHẠY KHI ĐANG CHỌN TAB RÁP HÀN) */}
+      {activeDept === 'raphan' ? (
         <>
           {/* HEADER TĨNH MÀU XÁM THAN CHÌ */}
           <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 text-white px-4 py-3 shadow-sm">
             <div className="max-w-md mx-auto flex items-center justify-between">
               
+              {/* Logo Lê Trần thu nhỏ lại cân đối hơn (h-7.5) */}
               <div className="flex items-center gap-2.5">
                 <img 
                   src="https://letranfurniture.com/wp-content/uploads/2025/01/Logo-removebg-preview.png" 
@@ -173,10 +171,11 @@ export default function App() {
                 />
                 <div className="min-w-0 text-left">
                   <h1 className="text-[11px] font-black uppercase tracking-wider text-white">Lê Trần Furniture</h1>
-                  <p className="text-[8.5px] text-slate-400 font-bold uppercase mt-0.5">Xưởng Cơ khí - Tiến độ</p>
+                  <p className="text-[8.5px] text-slate-400 font-bold uppercase mt-0.5">Xưởng Ráp hàn - Tiến độ</p>
                 </div>
               </div>
 
+              {/* NÚT TẢI LẠI TRỰC QUAN GỒM CHỮ VÀ ICON XOAY MẢNH HIỆN ĐẠI */}
               <button 
                 onClick={fetchAllData}
                 disabled={loading}
@@ -201,6 +200,7 @@ export default function App() {
           <div className="sticky top-0 z-40 bg-slate-50/95 backdrop-blur-md pt-3.5 pb-2.5 px-4 border-b border-slate-200/60 shadow-xs space-y-2.5">
             <div className="max-w-md mx-auto space-y-2.5">
               
+              {/* 1. Thanh ô tìm kiếm luôn cố định cao nhất */}
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -246,7 +246,7 @@ export default function App() {
                 ))}
               </div>
 
-              {/* Dải Chip lọc con dẹp nằm dưới Tab */}
+              {/* 3. Dải Chip lọc con dẹt nằm dưới Tab */}
               <div>
                 {activeTab === 'dailyPlan' ? (
                   <div className="grid grid-cols-4 gap-1 bg-slate-200/70 p-0.5 rounded-lg">
@@ -285,98 +285,98 @@ export default function App() {
                       onClick={() => setSelectedCTSX('unallocated')}
                       className={`px-3 py-1 text-xs font-black rounded-lg border transition-all shrink-0 ${
                         selectedCTSX === 'unallocated'
-                      ? 'bg-red-500 border-red-500 text-white shadow-2xs'
-                      : 'bg-white border-slate-200 text-slate-500'
-                  }`}
-                >
-                  Chưa phân bổ
-                </button>
-                {allReports?.ctsxList?.map(so => (
-                  <button
-                    key={so}
-                    onClick={() => setSelectedCTSX(so)}
-                    className={`px-3 py-1 text-xs font-black rounded-lg border transition-all duration-150 shrink-0 ${
-                      selectedCTSX === so
-                        ? 'bg-red-500 border-red-500 text-white shadow-2xs'
-                        : 'bg-white border-slate-200 text-slate-500'
-                    }`}
-                  >
-                    {so}
-                  </button>
-                ))}
+                          ? 'bg-red-500 border-red-500 text-white shadow-2xs'
+                          : 'bg-white border-slate-200 text-slate-500'
+                      }`}
+                    >
+                      Chưa phân bổ
+                    </button>
+                    {allReports?.ctsxList?.map(so => (
+                      <button
+                        key={so}
+                        onClick={() => setSelectedCTSX(so)}
+                        className={`px-3 py-1 text-xs font-black rounded-lg border transition-all duration-150 shrink-0 ${
+                          selectedCTSX === so
+                            ? 'bg-red-500 border-red-500 text-white shadow-2xs'
+                            : 'bg-white border-slate-200 text-slate-500'
+                        }`}
+                      >
+                        {so}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </div>
+
+          {/* THÂN DANH SÁCH SẢN PHẨM CHÍNH (Đệm pb-24 dưới đáy để không bị Menu nổi che mất) */}
+          <div className="max-w-md mx-auto px-4 mt-3 pb-24">
+
+            {/* 4 Chip tổng quan */}
+            {!loading && !error && currentTabReport && (
+              <div className="grid grid-cols-4 gap-1.5 mb-3">
+                <div className="bg-white rounded-lg border border-slate-150 p-1.5 text-center shadow-3xs">
+                  <p className="text-[8px] font-extrabold text-slate-400 uppercase">Đang SX</p>
+                  <p className="text-xs font-black text-blue-600 mt-0.5">{formatNum(currentTabReport.summary.producing)}</p>
+                </div>
+                <div className="bg-white rounded-lg border border-slate-150 p-1.5 text-center shadow-3xs">
+                  <p className="text-[8px] font-extrabold text-slate-400 uppercase">Vượt</p>
+                  <p className="text-xs font-black text-purple-600 mt-0.5">{formatNum(currentTabReport.summary.ahead)}</p>
+                </div>
+                <div className="bg-white rounded-lg border border-slate-150 p-1.5 text-center shadow-3xs">
+                  <p className="text-[8px] font-extrabold text-slate-400 uppercase">Đúng</p>
+                  <p className="text-xs font-black text-green-600 mt-0.5">{formatNum(currentTabReport.summary.onSchedule)}</p>
+                </div>
+                <div className="bg-white rounded-lg border border-slate-150 p-1.5 text-center shadow-3xs">
+                  <p className="text-[8px] font-extrabold text-slate-400 uppercase">Trễ</p>
+                  <p className="text-xs font-black text-red-600 mt-0.5">{formatNum(currentTabReport.summary.delay)}</p>
+                </div>
               </div>
             )}
-          </div>
 
-        </div>
-      </div>
+            {/* Loading skeleton */}
+            {loading && (
+              <div className="space-y-2.5 animate-pulse">
+                <div className="bg-white h-14 rounded-lg shadow-3xs"></div>
+                <div className="bg-white h-14 rounded-lg shadow-3xs"></div>
+              </div>
+            )}
 
-      {/* THÂN DANH SÁCH SẢN PHẨM CHÍNH (Đệm pb-24 dưới đáy để không bị Menu nổi che mất) */}
-      <div className="max-w-md mx-auto px-4 mt-3 pb-24">
+            {/* Thân danh sách các sản phẩm (Card ngắn dẹt tối ưu) */}
+            {!loading && !error && currentTabReport && (
+              <div className="space-y-2">
+                {filteredProducts.map(prod => {
+                  const badge = getStatusBadge(prod.trangThai);
+                  const uniqueKey = activeTab === 'ctsxProgress' ? prod.soCTSX + prod.tenSP : prod.tenSP;
+                  const isProducingCurrently = prod.khung.some(k => k.thucTe > 0);
 
-        {/* 4 Chip tổng quan */}
-        {!loading && !error && currentTabReport && (
-          <div className="grid grid-cols-4 gap-1.5 mb-3">
-            <div className="bg-white rounded-lg border border-slate-150 p-1.5 text-center shadow-3xs">
-              <p className="text-[8px] font-extrabold text-slate-400 uppercase">Đang SX</p>
-              <p className="text-xs font-black text-blue-600 mt-0.5">{formatNum(currentTabReport.summary.producing)}</p>
-            </div>
-            <div className="bg-white rounded-lg border border-slate-150 p-1.5 text-center shadow-3xs">
-              <p className="text-[8px] font-extrabold text-slate-400 uppercase">Vượt</p>
-              <p className="text-xs font-black text-purple-600 mt-0.5">{formatNum(currentTabReport.summary.ahead)}</p>
-            </div>
-            <div className="bg-white rounded-lg border border-slate-150 p-1.5 text-center shadow-3xs">
-              <p className="text-[8px] font-extrabold text-slate-400 uppercase">Đúng</p>
-              <p className="text-xs font-black text-green-600 mt-0.5">{formatNum(currentTabReport.summary.onSchedule)}</p>
-            </div>
-            <div className="bg-white rounded-lg border border-slate-150 p-1.5 text-center shadow-3xs">
-              <p className="text-[8px] font-extrabold text-slate-400 uppercase">Trễ</p>
-              <p className="text-xs font-black text-red-600 mt-0.5">{formatNum(currentTabReport.summary.delay)}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Loading skeleton */}
-        {loading && (
-          <div className="space-y-2.5 animate-pulse">
-            <div className="bg-white h-14 rounded-lg shadow-3xs"></div>
-            <div className="bg-white h-14 rounded-lg shadow-3xs"></div>
-          </div>
-        )}
-
-        {/* Thân danh sách các sản phẩm (Card ngắn dẹt tối ưu) */}
-        {!loading && !error && currentTabReport && (
-          <div className="space-y-2">
-            {filteredProducts.map(prod => {
-              const badge = getStatusBadge(prod.trangThai);
-              const uniqueKey = activeTab === 'ctsxProgress' ? prod.soCTSX + prod.tenSP : prod.tenSP;
-              const isProducingCurrently = prod.khung.some(k => k.thucTe > 0);
-
-              return (
-                <div 
-                  key={uniqueKey} 
-                  onClick={() => {
-                    setSelectedProductName(prod.tenSP); 
-                    setDetailTimeFilter(activeFilter); 
-                    setDetailFrameFilter('all');
-                  }}
-                  className={`bg-white border border-slate-150 rounded-lg shadow-3xs overflow-hidden transition-all duration-150 active:bg-slate-100 flex flex-col justify-between p-2.5 cursor-pointer ${badge.border}`}
-                >
-                  <div className="flex items-center gap-2.5 justify-between">
-                    <div className="flex items-center gap-2 min-w-0 flex-1 text-left">
-                      {prod.hinhAnh ? (
-                        <img 
-                          src={prod.hinhAnh} 
-                          alt={prod.tenSP}
-                          className="w-9 h-9 object-cover rounded border border-slate-100 bg-slate-50 shrink-0"
-                          onError={(e) => { e.target.style.display = 'none'; }}
-                        />
-                      ) : (
-                        <div className="w-9 h-9 bg-slate-100 rounded flex items-center justify-center text-slate-450 border border-slate-150 shrink-0">
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                        </div>
+                  return (
+                    <div 
+                      key={uniqueKey} 
+                      onClick={() => {
+                        setSelectedProductName(prod.tenSP); 
+                        setDetailTimeFilter(activeFilter); 
+                        setDetailFrameFilter('all');
+                      }}
+                      className={`bg-white border border-slate-150 rounded-lg shadow-3xs overflow-hidden transition-all duration-150 active:bg-slate-100 flex flex-col justify-between p-2.5 cursor-pointer ${badge.border}`}
+                    >
+                      <div className="flex items-center gap-2.5 justify-between">
+                        <div className="flex items-center gap-2 min-w-0 flex-1 text-left">
+                          {prod.hinhAnh ? (
+                            <img 
+                              src={prod.hinhAnh} 
+                              alt={prod.tenSP}
+                              className="w-9 h-9 object-cover rounded border border-slate-100 bg-slate-50 shrink-0"
+                              onError={(e) => { e.target.style.display = 'none'; }}
+                            />
+                          ) : (
+                            <div className="w-9 h-9 bg-slate-100 rounded flex items-center justify-center text-slate-450 border border-slate-150 shrink-0">
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            </div>
                       )}
                       
                       <div className="min-w-0 flex-1 text-left">
@@ -389,20 +389,20 @@ export default function App() {
                           {prod.tenSP}
                         </h3>
 
-                        {/* SL hiển thị gọn, phân biệt rõ ràng màu sắc KH / TH */}
+                        {/* SL hiển thị dẹt, phân định cực kỳ rõ ràng giữa Thực hiện và Kế hoạch */}
                         <div className="text-[10px] font-bold text-slate-500 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-1">
                           {activeTab === 'dailyPlan' && (
                             <>
-                              <span className="text-slate-400 font-bold">Thực hiện:</span>
+                              <span className="text-slate-400 font-bold">Thực hiện (TH):</span>
                               <span className="text-slate-900 font-black">{formatNum(prod.dongBo)}</span>
                               <span className="text-slate-300">|</span>
-                              <span className="text-slate-400 font-bold">Kế hoạch ngày:</span>
+                              <span className="text-slate-400 font-bold">Kế hoạch (KH):</span>
                               <span className="text-slate-900 font-extrabold">{formatNum(prod.keHoach)}</span>
                             </>
                           )}
                           {activeTab === 'ctsxProgress' && selectedCTSX === 'totalOrder' && (
                             <>
-                              <span className="text-slate-400 font-bold">Thực hiện tích lũy:</span>
+                              <span className="text-slate-400 font-bold">Thực hiện:</span>
                               <span className="text-slate-900 font-black">{formatNum(prod.dongBo)}</span>
                               <span className="text-slate-300">|</span>
                               <span className="text-slate-400 font-bold">Tổng đơn hàng:</span>
@@ -449,7 +449,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Hàng 2: Linh kiện dẹt nằm ngang (Đồng bộ nhãn viết tắt TH / KH) */}
+                  {/* Hàng 2: Linh kiện dẹt nằm ngang (TH 8.908 | KH 19.840) */}
                   <div className="flex flex-wrap gap-1 mt-2 border-t border-slate-100/60 pt-1.5 text-left">
                     {prod.khung.map(k => {
                       const isUnder = k.thucTe < k.keHoach;
@@ -483,15 +483,15 @@ export default function App() {
           </div>
           <h2 className="text-sm font-black text-slate-800 uppercase tracking-wide">Tính năng đang phát triển</h2>
           <p className="text-xs text-slate-500 max-w-xs mt-2 leading-relaxed">
-            Phân hệ quản lý sản xuất chuyên sâu dành riêng cho bộ phận <b className="text-slate-700">
-              {activeDept === 'raphan' ? 'Ráp hàn' : activeDept === 'dinhhinh' ? 'Định hình' : 'Khuôn gá'}
-            </b> đang được xây dựng dựa trên đặc thù nguồn dữ liệu xưởng.
+            Phân hệ quản lý sản xuất dành riêng cho bộ phận <b className="text-slate-700">
+              {activeDept === 'dinhhinh' ? 'Định hình' : activeDept === 'khuonga' ? 'Khuôn gá' : activeDept === 'nhansu' ? 'Nhân sự' : 'Thông báo'}
+            </b> đang được lập trình dựa trên đặc thù nguồn dữ liệu xưởng Lê Trần.
           </p>
           <button 
-            onClick={() => setActiveDept('cokhi')}
+            onClick={() => setActiveDept('raphan')}
             className="mt-6 px-4 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-xs font-black rounded-xl shadow-md active:scale-95 transition-all"
           >
-            Quay lại phân hệ Cơ khí
+            Quay lại phân hệ Ráp hàn
           </button>
         </div>
       )}
@@ -510,7 +510,7 @@ export default function App() {
             activeDetailProduct ? 'translate-x-0' : 'translate-x-full'
           }`}
         >
-          {/* CỤM STICKY TRANG CHI TIẾT (Back + Tên dẹt + Ô tìm kiếm + Bộ lọc con luôn ghim cố định khi vuốt) */}
+          {/* CỤM STICKY TRANG CHI TIẾT (Quy chuẩn bám dính thông minh không sợ mất chip lọc khi vuốt) */}
           <div className="sticky top-0 z-50 bg-slate-50 border-b border-slate-200/60 shadow-xs space-y-2 pt-3.5 pb-2.5 px-4">
             
             <div className="flex items-center gap-2 max-w-md mx-auto">
@@ -645,7 +645,7 @@ export default function App() {
                     </div>
                   )}
                   
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 text-left">
                     <h3 className="font-extrabold text-xs text-slate-900 break-words leading-tight">
                       {activeDetailProduct.tenSP}
                     </h3>
@@ -673,14 +673,14 @@ export default function App() {
                       ) : selectedCTSX === 'totalOrder' ? (
                         <>
                           <div className="flex justify-between"><span className="text-slate-400 font-bold">Tổng đơn hàng (Order):</span><span className="text-slate-900 font-extrabold">{formatNum(activeDetailProduct.orderQty)}</span></div>
-                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Thực hiện tích lũy:</span><span className="text-slate-900 font-black">{formatNum(activeDetailProduct.dongBo)}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Thực hiện tích lũy (TH):</span><span className="text-slate-900 font-black">{formatNum(activeDetailProduct.dongBo)}</span></div>
                           <div className="flex justify-between"><span className="text-slate-400 font-bold">Còn lại đơn hàng:</span><span className="text-red-600 font-black">{formatNum(activeDetailProduct.orderQty - activeDetailProduct.dongBo)}</span></div>
                         </>
                       ) : (
                         <>
-                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Mục tiêu {selectedCTSX}:</span><span className="text-slate-900 font-extrabold">{formatNum(activeDetailProduct.keHoach)}</span></div>
-                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Thực hiện chỉ thị:</span><span className="text-slate-900 font-black">{formatNum(activeDetailProduct.dongBo)}</span></div>
-                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Còn lại chỉ thị:</span><span className="text-red-600 font-black">{formatNum(activeDetailProduct.keHoach - activeDetailProduct.dongBo > 0 ? activeDetailProduct.keHoach - activeDetailProduct.dongBo : 0)}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Mục tiêu {selectedCTSX} (KH):</span><span className="text-slate-900 font-extrabold">{formatNum(activeDetailProduct.keHoach)}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Thực hiện mẻ (TH):</span><span className="text-slate-900 font-black">{formatNum(activeDetailProduct.dongBo)}</span></div>
+                          <div className="flex justify-between"><span className="text-slate-400 font-bold">Còn lại mẻ:</span><span className="text-red-600 font-black">{formatNum(activeDetailProduct.keHoach - activeDetailProduct.dongBo > 0 ? activeDetailProduct.keHoach - activeDetailProduct.dongBo : 0)}</span></div>
                         </>
                       )}
                     </div>
@@ -698,7 +698,7 @@ export default function App() {
                       <table className="w-full text-[10px] border-collapse">
                         <thead>
                           <tr className="bg-slate-50 text-slate-500 font-extrabold uppercase border-b border-slate-150">
-                            <th className="py-1.5 px-3 text-left">Chỉ thị</th>
+                            <th className="py-1.5 px-3">Chỉ thị</th>
                             <th className="py-1.5 px-1 text-right">Mục tiêu</th>
                             <th className="py-1.5 px-1 text-right">Đã làm</th>
                             <th className="py-1.5 px-3 text-right">Còn lại</th>
@@ -863,66 +863,83 @@ export default function App() {
         </div>
       </div>
 
-      {/* 5. THANH MENU NỔI DƯỚI ĐÁY CỰM TÍNH NĂNG ĐANG PHÁT TRIỂN (FLOATING BOTTOM NAVIGATION) */}
-      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-[calc(100%-2rem)] max-w-md bg-white/95 backdrop-blur-md border border-slate-200 shadow-lg rounded-2xl py-1 px-2 flex items-center justify-around z-40 transition-all">
+      {/* 5. THANH MENU NỔI DƯỚI ĐÁY CHIA ĐỀU 5 PHÒNG BAN (FLOATING BOTTOM NAVIGATION - ĐÃ ĐỒNG BỘ) */}
+      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 w-[calc(100%-1.5rem)] max-w-md bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-lg rounded-2xl py-1 px-1 grid grid-cols-5 gap-0.5 z-40 transition-all">
         
-        {/* Nút Phân hệ Cơ khí (Đang chạy mượt mà) */}
+        {/* Tổ Ráp Hàn (Sản xuất thực tế của hệ thống hiện tại) */}
         <button 
           onClick={() => setActiveDept('cokhi')}
-          className={`flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl transition-all ${
+          className={`flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-all ${
             activeDept === 'cokhi' 
               ? 'text-red-600 bg-red-50 font-black' 
               : 'text-slate-400 hover:text-slate-800'
           }`}
         >
-          <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.3">
+          <svg className="w-4.5 h-4.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.3">
             <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          <span className="text-[9px] uppercase tracking-wide">Cơ khí</span>
+          <span className="text-[7.5px] font-extrabold uppercase tracking-tight">Ráp hàn</span>
         </button>
 
-        {/* Nút Phân hệ Ráp hàn (Coming Soon) */}
+        {/* Tổ Định Hình */}
         <button 
-          onClick={() => setActiveDept('raphan')}
-          className={`flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl transition-all ${
-            activeDept === 'raphan' 
+          onClick={() => setActiveDept('dinhhinh')}
+          className={`flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-all ${
+            activeDept === 'dinhhinh' 
               ? 'text-red-600 bg-red-50 font-black' 
               : 'text-slate-400 hover:text-slate-800'
           }`}
         >
-          <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.3">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
-          <span className="text-[9px] uppercase tracking-wide">Ráp hàn</span>
-        </button>
-
-        {/* Nút Phân hệ Định hình (Coming Soon) */}
-        <button 
-          onClick={() => setActiveDept('dinhhinh')}
-          className={`flex flex-col items-center gap-0.5 py-1.5 px-3 rounded-xl transition-all ${
-            activeDept === 'dinhhinh' 
-              ? 'text-red-600 bg-red-50 font-black' 
-              : 'text-slate-400 hover:text-slate-950'
-          }`}
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.2">
+          <svg className="w-4.5 h-4.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.3">
             <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
           </svg>
-          <span className="text-[9px] uppercase">Định hình</span>
+          <span className="text-[8px] font-extrabold uppercase tracking-tight">Định hình</span>
         </button>
 
-        {/* Nút Phân hệ Khuôn gá (Coming Soon) */}
+        {/* Tổ Khuôn gá */}
         <button 
           onClick={() => setActiveDept('khuonga')}
-          className={`flex-1 py-1 text-center transition-all duration-150 flex flex-col items-center ${
-            activeDept === 'khuonga' ? 'text-red-600' : 'text-slate-500'
+          className={`flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-all ${
+            activeDept === 'khuonga' 
+              ? 'text-red-600 bg-red-50 font-black' 
+              : 'text-slate-400 hover:text-slate-850'
           }`}
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+          <svg className="w-4.5 h-4.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.3">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 00-2 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
           </svg>
-          <span className="text-[9px] font-bold uppercase mt-0.5">Khuôn gá</span>
+          <span className="text-[8px] font-extrabold uppercase tracking-tight">Khuôn gá</span>
+        </button>
+
+        {/* Phân hệ Nhân sự (Coming Soon) */}
+        <button 
+          onClick={() => setActiveDept('nhansu')}
+          className={`flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-all ${
+            activeDept === 'nhansu' 
+              ? 'text-red-600 bg-red-50 font-black' 
+              : 'text-slate-400 hover:text-slate-850'
+          }`}
+        >
+          <svg className="w-4.5 h-4.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.3">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <span className="text-[8px] font-extrabold uppercase tracking-tight">Nhân sự</span>
+        </button>
+
+        {/* Phân hệ Thông báo (Coming Soon) */}
+        <button 
+          onClick={() => setActiveDept('thongbao')}
+          className={`flex flex-col items-center gap-0.5 py-1.5 rounded-xl transition-all ${
+            activeDept === 'thongbao' 
+              ? 'text-red-600 bg-red-50 font-black' 
+              : 'text-slate-400 hover:text-slate-850'
+          }`}
+        >
+          <svg className="w-4.5 h-4.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.3">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.001 0 0118 14.158V11a6.002 6.001 0 00-4-5.659V5a2 2 0 10-4 0v1.581C7.398 8.16 6 10.612 6 13v1.5c0 .32-.115.63-.317.852l-2.147 2.147M15 17H9m6 0a3 3 0 11-6 0" />
+          </svg>
+          <span className="text-[8px] font-extrabold uppercase tracking-tight">Báo tin</span>
         </button>
       </div>
 
